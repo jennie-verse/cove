@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {JOURNAL_APPS,JOURNAL_KINDS,validateRecord,localIso} from '../shared/v2/journal.js';
+test('shared journal accepts Cove records',()=>{assert.ok(JOURNAL_APPS.includes('cove'));assert.ok(JOURNAL_KINDS.cove.includes('link-saved'));const at=localIso(new Date());const row=validateRecord('cove',{id:'saved:c_1',kind:'link-saved',at,updatedAt:at,deleted:false,title:'Example',data:{itemId:'c_1'}});assert.equal(row.kind,'link-saved')});

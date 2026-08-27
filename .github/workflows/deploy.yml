@@ -1,0 +1,51 @@
+name: Test and deploy Cove
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Check JavaScript syntax
+        run: |
+          for file in src/*.js shared/v1/*.js shared/v2/*.js sw.js; do
+            node --check "$file"
+          done
+
+  deploy:
+    needs: test
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Stage public runtime files
+        run: |
+          mkdir public
+          cp .nojekyll THIRD_PARTY_NOTICES.md index.html manifest.webmanifest reader-host.html sw.js public/
+          cp -R assets docs icons licenses shared src vendor public/
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
