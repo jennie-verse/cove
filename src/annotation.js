@@ -1,8 +1,150 @@
-import * as store from './store.js';import {download} from './ui.js';
-const yaml=v=>JSON.stringify(String(v??''));const safeName=v=>String(v||'Untitled').replace(/[\\/:*?"<>|]/g,'-').trim().slice(0,120)||'Untitled';
-function quoteMarkdown(value){return String(value||'').split(/\r?\n/).map(line=>`> ${line}`).join('\n')}
-export async function addAnnotation(itemId,{kind='highlight',color='pink',quote='',note='',locator=null}={}){const now=Date.now();const row={id:store.makeId('a'),itemId,kind,color,quote:String(quote).trim(),note:String(note).trim(),locator:locator||{},createdAt:now,updatedAt:now,deletedAt:null};await store.put('annotations',row);return row}
-export async function deleteAnnotation(id){const row=await store.get('annotations',id);if(row)await store.put('annotations',{...row,deletedAt:Date.now(),updatedAt:Date.now()})}
-export function serializeDocumentAnnotations(annotations,item,folderName='',{exportedAt=new Date().toISOString()}={}){const active=(annotations||[]).filter(a=>!a.deletedAt);const head=['---','app: cove',`title: ${yaml(item.title||item.host)}`,`url: ${yaml(item.url)}`,`folder: ${yaml(folderName||'Unsorted')}`,`tags: [${item.tags.map(yaml).join(', ')}]`,`exported_at: ${yaml(exportedAt)}`,`annotation_count: ${active.length}`,'---','',`# ${item.title||item.host} — Cove notes`,''];if(!active.length)head.push('_No annotations._','');for(const a of active){head.push(`## ${a.kind==='note'?'Note':'Highlight'}`,'');if(a.quote)head.push(quoteMarkdown(a.quote),'');if(a.note)head.push(a.note,'')}return `${head.join('\n').trimEnd()}\n`}
-export async function exportItemMarkdown(item,folderName=''){const notes=await store.annotationsFor(item.id);download(`${safeName(item.title||item.host)}--cove-notes-${new Date().toISOString().slice(0,10)}.md`,serializeDocumentAnnotations(notes,item,folderName),'text/markdown;charset=utf-8')}
-export function locateQuote(root,quote){if(!quote)return null;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node,text='',nodes=[];while(node=walker.nextNode()){nodes.push({node,start:text.length,end:text.length+node.data.length});text+=node.data}const start=text.indexOf(quote);if(start<0)return null;const end=start+quote.length,s=nodes.find(n=>n.start<=start&&n.end>start),e=nodes.find(n=>n.start<end&&n.end>=end);if(!s||!e)return null;const range=document.createRange();range.setStart(s.node,start-s.start);range.setEnd(e.node,end-e.start);return range}
+/* cove — annotation.js
+   Stage 2 — highlights and notes (5 colors), locator save/restore, and Markdown export matching folio's serializeDocumentAnnotations() format.
+*/
+
+import * as store from './store.js';
+import { download } from './ui.js';
+const yaml = (v) => JSON.stringify(String(v ?? ''));
+const safeName = (v) =>
+  String(v || 'Untitled')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .trim()
+    .slice(0, 120) || 'Untitled';
+function quoteMarkdown(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => `> ${line}`)
+    .join('\n');
+}
+export async function addAnnotation(
+  itemId,
+  { kind = 'highlight', color = 'pink', quote = '', note = '', locator = null } = {},
+) {
+  const now = Date.now();
+  const row = {
+    id: store.makeId('a'),
+    itemId,
+    kind,
+    color,
+    quote: String(quote).trim(),
+    note: String(note).trim(),
+    locator: locator || {},
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+  await store.put('annotations', row);
+  return row;
+}
+export async function deleteAnnotation(id) {
+  const row = await store.get('annotations', id);
+  if (row) await store.put('annotations', { ...row, deletedAt: Date.now(), updatedAt: Date.now() });
+}
+export function serializeDocumentAnnotations(
+  annotations,
+  item,
+  folderName = '',
+  { exportedAt = new Date().toISOString() } = {},
+) {
+  const active = (annotations || []).filter((a) => !a.deletedAt);
+  const head = [
+    '---',
+    'app: cove',
+    `title: ${yaml(item.title || item.host)}`,
+    `url: ${yaml(item.url)}`,
+    `folder: ${yaml(folderName || 'Unsorted')}`,
+    `tags: [${item.tags.map(yaml).join(', ')}]`,
+    `exported_at: ${yaml(exportedAt)}`,
+    `annotation_count: ${active.length}`,
+    '---',
+    '',
+    `# ${item.title || item.host} — Cove notes`,
+    '',
+  ];
+  if (!active.length) head.push('_No annotations._', '');
+  for (const a of active) {
+    head.push(`## ${a.kind === 'note' ? 'Note' : 'Highlight'}`, '');
+    if (a.quote) head.push(quoteMarkdown(a.quote), '');
+    if (a.note) head.push(a.note, '');
+  }
+  return `${head.join('\n').trimEnd()}\n`;
+}
+export async function exportItemMarkdown(item, folderName = '') {
+  const notes = await store.annotationsFor(item.id);
+  download(
+    `${safeName(item.title || item.host)}--cove-notes-${new Date().toISOString().slice(0, 10)}.md`,
+    serializeDocumentAnnotations(notes, item, folderName),
+    'text/markdown;charset=utf-8',
+  );
+}
+// Combines several items' full annotation sets into one Markdown file — used
+// for both "export selected items" and "export whole folder" (12-3). Order
+// follows `items` as given by the caller. Items with zero annotations are
+// still listed (with "_No annotations._") so the frontmatter count and the
+// body never disagree.
+export function serializeMultiItemAnnotations(
+  entries,
+  { exportedAt = new Date().toISOString() } = {},
+) {
+  const list = Array.isArray(entries) ? entries : [];
+  const head = [
+    '---',
+    'app: cove',
+    `exported_at: ${yaml(exportedAt)}`,
+    `item_count: ${list.length}`,
+    'items:',
+    ...list.map(({ item }) => `  - ${yaml(item.title || item.host)}`),
+    '---',
+    '',
+  ];
+  const body = [];
+  list.forEach(({ item, annotations, folderName }, index) => {
+    const active = (annotations || []).filter((a) => !a.deletedAt);
+    if (index > 0) body.push('');
+    body.push(`## ${item.title || item.host}`, '');
+    body.push(`- url: ${item.url}`, `- folder: ${folderName || 'Unsorted'}`, '');
+    if (!active.length) body.push('_No annotations._', '');
+    for (const a of active) {
+      body.push(`### ${a.kind === 'note' ? 'Note' : 'Highlight'}`, '');
+      if (a.quote) body.push(quoteMarkdown(a.quote), '');
+      if (a.note) body.push(a.note, '');
+    }
+  });
+  return `${[...head, ...body].join('\n').trimEnd()}\n`;
+}
+export async function exportItemsMarkdown(items, folderNameFor = () => 'Unsorted', label = 'cove-notes') {
+  const entries = [];
+  for (const item of items) {
+    entries.push({
+      item,
+      annotations: await store.annotationsFor(item.id),
+      folderName: folderNameFor(item),
+    });
+  }
+  download(
+    `${label}-${new Date().toISOString().slice(0, 10)}.md`,
+    serializeMultiItemAnnotations(entries),
+    'text/markdown;charset=utf-8',
+  );
+}
+export function locateQuote(root, quote) {
+  if (!quote) return null;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node,
+    text = '',
+    nodes = [];
+  while ((node = walker.nextNode())) {
+    nodes.push({ node, start: text.length, end: text.length + node.data.length });
+    text += node.data;
+  }
+  const start = text.indexOf(quote);
+  if (start < 0) return null;
+  const end = start + quote.length,
+    s = nodes.find((n) => n.start <= start && n.end > start),
+    e = nodes.find((n) => n.start < end && n.end >= end);
+  if (!s || !e) return null;
+  const range = document.createRange();
+  range.setStart(s.node, start - s.start);
+  range.setEnd(e.node, end - e.start);
+  return range;
+}

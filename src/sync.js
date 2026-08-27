@@ -1,7 +1,89 @@
+/* cove — sync.js
+   Stage 3 — thin wrapper around shared/v1/sync.js for optional GitHub sync. Off by default.
+*/
+
 import * as store from './store.js';
-const keys={token:'sync.token.v1',enabled:'cove.syncEnabled',context:'cove.syncContextId',label:'cove.syncContextLabel',last:'cove.lastSyncAt'};
-const get=k=>localStorage.getItem(k)||'';export const isEnabled=()=>get(keys.enabled)==='1';export const tokenHint=()=>get(keys.token)?`••••${get(keys.token).slice(-4)}`:'';export function configure({token,device}){localStorage.setItem(keys.token,token.trim());localStorage.setItem(keys.enabled,'1');localStorage.setItem(keys.label,device.trim());if(!get(keys.context))localStorage.setItem(keys.context,device.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50)||`device-${Date.now().toString(36)}`)}export function disable(){localStorage.setItem(keys.enabled,'0')}
-function cfg(){const owner=location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i)?.[1]||'jennie-verse';return {owner,repo:'webapp-data',branch:'main',token:get(keys.token)}}
-async function api(){return import('../shared/v1/sync.js')}
-export async function syncNow(){if(!isEnabled())throw new Error('Turn on Sync first.');const context=get(keys.context),path=`cove/index.${context}.json`,shared=await api(),config=cfg();const local={app:'cove',schema:1,updatedAt:new Date().toISOString(),folders:await store.all('folders'),items:(await store.all('items')).map(({hasArticle,...i})=>({...i,hasArticle:false})),annotations:await store.all('annotations')};const remote=await shared.readFile(config,path);if(remote.exists){try{const data=JSON.parse(remote.content);for(const f of data.folders||[])await store.put('folders',f);for(const i of data.items||[]){const current=await store.getByUrlKey(i.urlKey);await store.put('items',current?{...i,...current,tags:[...new Set([...(i.tags||[]),...(current.tags||[])])]}:i)}for(const a of data.annotations||[])await store.put('annotations',a)}catch{}}const merged={...local,folders:await store.all('folders'),items:(await store.all('items')).map(({hasArticle,...i})=>({...i,hasArticle:false})),annotations:await store.all('annotations')};await shared.writeFile(config,path,JSON.stringify(merged,null,2),{sha:remote.sha||undefined,message:'sync: update cove'});localStorage.setItem(keys.last,String(Date.now()));return merged.items.length}
-export const getToken=()=>get(keys.token);export const getContext=()=>get(keys.context);export const getLastSync=()=>Number(get(keys.last)||0);
+const keys = {
+  token: 'sync.token.v1',
+  enabled: 'cove.syncEnabled',
+  context: 'cove.syncContextId',
+  label: 'cove.syncContextLabel',
+  last: 'cove.lastSyncAt',
+};
+const get = (k) => localStorage.getItem(k) || '';
+export const isEnabled = () => get(keys.enabled) === '1';
+export const tokenHint = () => (get(keys.token) ? `••••${get(keys.token).slice(-4)}` : '');
+export function configure({ token, device }) {
+  localStorage.setItem(keys.token, token.trim());
+  localStorage.setItem(keys.enabled, '1');
+  localStorage.setItem(keys.label, device.trim());
+  if (!get(keys.context))
+    localStorage.setItem(
+      keys.context,
+      device
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 50) || `device-${Date.now().toString(36)}`,
+    );
+}
+export function disable() {
+  localStorage.setItem(keys.enabled, '0');
+}
+function cfg() {
+  const owner = location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i)?.[1] || 'jennie-verse';
+  return { owner, repo: 'webapp-data', branch: 'main', token: get(keys.token) };
+}
+async function api() {
+  // Canonical deployed shared module — same origin-relative path pattern as
+  // folio/tide: https://<account>.github.io/shared/v1/sync.js. cove does not
+  // bundle its own copy (see docs/README-KO.md for why).
+  return import('../../shared/v1/sync.js');
+}
+export async function syncNow() {
+  if (!isEnabled()) throw new Error('Turn on Sync first.');
+  const context = get(keys.context),
+    path = `cove/index.${context}.json`,
+    shared = await api(),
+    config = cfg();
+  const local = {
+    app: 'cove',
+    schema: 1,
+    updatedAt: new Date().toISOString(),
+    folders: await store.all('folders'),
+    items: (await store.all('items')).map(({ hasArticle, ...i }) => ({ ...i, hasArticle: false })),
+    annotations: await store.all('annotations'),
+  };
+  const remote = await shared.readFile(config, path);
+  if (remote.exists) {
+    try {
+      const data = JSON.parse(remote.content);
+      for (const f of data.folders || []) await store.put('folders', f);
+      for (const i of data.items || []) {
+        const current = await store.getByUrlKey(i.urlKey);
+        await store.put(
+          'items',
+          current
+            ? { ...i, ...current, tags: [...new Set([...(i.tags || []), ...(current.tags || [])])] }
+            : i,
+        );
+      }
+      for (const a of data.annotations || []) await store.put('annotations', a);
+    } catch {}
+  }
+  const merged = {
+    ...local,
+    folders: await store.all('folders'),
+    items: (await store.all('items')).map(({ hasArticle, ...i }) => ({ ...i, hasArticle: false })),
+    annotations: await store.all('annotations'),
+  };
+  await shared.writeFile(config, path, JSON.stringify(merged, null, 2), {
+    sha: remote.sha || undefined,
+    message: 'sync: update cove',
+  });
+  localStorage.setItem(keys.last, String(Date.now()));
+  return merged.items.length;
+}
+export const getToken = () => get(keys.token);
+export const getContext = () => get(keys.context);
+export const getLastSync = () => Number(get(keys.last) || 0);

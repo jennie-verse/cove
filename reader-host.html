@@ -1,1 +1,72 @@
-<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; script-src 'none'"><style>body{margin:0;font:17px/1.75 ui-serif,Georgia,serif;color:#4a3a40}img{max-width:100%}a{color:#8a4257}pre{white-space:pre-wrap}*{overflow-wrap:anywhere}</style></head><body></body></html>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      This document only ever runs inside an iframe with sandbox=
+      "allow-scripts allow-popups allow-popups-to-escape-sandbox" and NO
+      allow-same-origin token (see src/reader.js). That makes it cross-origin
+      from the app shell, so script-src 'self' below can only ever load
+      src/reader-frame.js — the one trusted bootstrap script cove ships here.
+      Saved article bodies are sanitized (DOMPurify) by the app before they
+      arrive via postMessage and are never themselves treated as script.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; script-src 'self'"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 4px 14px 40px;
+        font-family: ui-serif, Georgia, serif;
+        font-size: var(--reader-size, 17px);
+        line-height: var(--reader-line, 1.75);
+        color: #4a3a40;
+      }
+      #content {
+        max-width: var(--reader-width, 620px);
+        margin: 0 auto;
+      }
+      #content img,
+      #content video,
+      #content iframe,
+      #content object,
+      #content form {
+        display: none;
+      }
+      a {
+        color: #8a4257;
+      }
+      pre {
+        white-space: pre-wrap;
+      }
+      * {
+        overflow-wrap: anywhere;
+      }
+      mark {
+        border-radius: 2px;
+        padding: 0 2px;
+      }
+      mark[data-color='pink'] {
+        background: #f7c8d3;
+      }
+      mark[data-color='yellow'] {
+        background: #f7e3a8;
+      }
+      mark[data-color='green'] {
+        background: #cbe5b4;
+      }
+      mark[data-color='blue'] {
+        background: #b9d8ee;
+      }
+      mark[data-color='purple'] {
+        background: #cfc6e8;
+      }
+    </style>
+  </head>
+  <body>
+    <article id="content"></article>
+    <script src="./src/reader-frame.js"></script>
+  </body>
+</html>

@@ -1,4 +1,9 @@
-/* ==========================================================================
+/* TEST-ONLY SNAPSHOT — not used by the deployed app. Copied from
+   Published/shared/v1/sync.js (never modified) purely so
+   tests/fixtures/v2/journal.js can resolve its own import in CI, which only
+   checks out this repo. The real app imports the canonical deployed module
+   at ../../shared/v1/sync.js (src/sync.js) — see docs/README-KO.md.
+   ==========================================================================
    shared/v1/sync.js
    GitHub Contents API 읽기/쓰기 + outbox 재전송 큐 (ES module)
 

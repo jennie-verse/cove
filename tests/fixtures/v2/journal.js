@@ -1,4 +1,12 @@
-/* ========================================================================== 
+/* TEST-ONLY SNAPSHOT — not used by the deployed app.
+   Copied from Published/shared/v2/journal.js (never modified — see the
+   fixed rule in shared/README.md) so `npm test` can validate cove's journal
+   records without a sibling checkout of the shared repo (CI only clones
+   this repo). The real app always imports the canonical deployed module at
+   ../../shared/v2/journal.js (src/journal.js) — see docs/README-KO.md.
+   If shared/v2/journal.js's contract ever changes, refresh this file to
+   match; do not diverge it on purpose.
+   ==========================================================================
    shared/v2/journal.js
    Date-based journal projection contract and GitHub Contents API writer.
 

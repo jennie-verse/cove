@@ -1,2 +1,43 @@
-import * as store from './store.js';import {addLink} from './intake.js';import {canonicalUrl,extractArticle} from './extract.js';import {normalizeUrlKey} from './url.js';
-export async function importHtmlFiles(files){const results=[];for(const file of [...files]){if(!/\.html?$/i.test(file.name)){results.push({file:file.name,ok:false,reason:'Not an HTML file.'});continue}try{const raw=await file.text(),url=canonicalUrl(raw,file.name);if(!url)throw new Error('Original URL not found.');let item=await store.getByUrlKey(normalizeUrlKey(url));if(!item){const added=await addLink({url,title:'',source:'import'});item=added.item}const article=extractArticle(raw,{fallbackTitle:item.title});if(!item.title&&article.title)item={...item,title:article.title};await store.put('articles',{itemId:item.id,html:article.html,text:article.text,capturedAt:Date.now(),lastOpenedAt:Date.now(),bytes:new Blob([article.html]).size,wordCount:article.wordCount});await store.put('items',{...item,hasArticle:true,updatedAt:Date.now()});results.push({file:file.name,ok:true,itemId:item.id})}catch(e){results.push({file:file.name,ok:false,reason:e.message})}}return results}
+/* cove — import.js
+   Stage 2 — imports saved .html files from the cove-inbox folder and links them to existing items by URL.
+*/
+
+import * as store from './store.js';
+import { addLink } from './intake.js';
+import { canonicalUrl, extractArticle } from './extract.js';
+import { normalizeUrlKey } from './url.js';
+export async function importHtmlFiles(files) {
+  const results = [];
+  for (const file of [...files]) {
+    if (!/\.html?$/i.test(file.name)) {
+      results.push({ file: file.name, ok: false, reason: 'Not an HTML file.' });
+      continue;
+    }
+    try {
+      const raw = await file.text(),
+        url = canonicalUrl(raw, file.name);
+      if (!url) throw new Error('Original URL not found.');
+      let item = await store.getByUrlKey(normalizeUrlKey(url));
+      if (!item) {
+        const added = await addLink({ url, title: '', source: 'import' });
+        item = added.item;
+      }
+      const article = extractArticle(raw, { fallbackTitle: item.title });
+      if (!item.title && article.title) item = { ...item, title: article.title };
+      await store.put('articles', {
+        itemId: item.id,
+        html: article.html,
+        text: article.text,
+        capturedAt: Date.now(),
+        lastOpenedAt: Date.now(),
+        bytes: new Blob([article.html]).size,
+        wordCount: article.wordCount,
+      });
+      await store.put('items', { ...item, hasArticle: true, updatedAt: Date.now() });
+      results.push({ file: file.name, ok: true, itemId: item.id });
+    } catch (e) {
+      results.push({ file: file.name, ok: false, reason: e.message });
+    }
+  }
+  return results;
+}

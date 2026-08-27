@@ -1,4 +1,61 @@
-const DROP='script,style,noscript,iframe,object,embed,form,button,input,textarea,select,nav,header,footer,aside,svg,canvas,video,audio,picture,source,img';
-export function extractArticle(rawHtml,{fallbackTitle=''}={}){const doc=new DOMParser().parseFromString(rawHtml,'text/html');doc.querySelectorAll(DROP).forEach(n=>n.remove());doc.querySelectorAll('*').forEach(n=>{[...n.attributes].forEach(a=>{if(/^on/i.test(a.name)||['style','src','srcset','poster'].includes(a.name))n.removeAttribute(a.name)});if(n.tagName==='A'){const href=n.getAttribute('href');if(!/^https?:/i.test(href||''))n.removeAttribute('href');else{n.target='_blank';n.rel='noopener noreferrer'}}});const candidates=[...doc.querySelectorAll('article,main,[role=main],.article,.post,.entry-content')];let root=candidates.sort((a,b)=>(b.textContent?.length||0)-(a.textContent?.length||0))[0]||doc.body;if(!root||root.textContent.trim().length<80)throw new Error('No readable article text was found.');const clean=globalThis.DOMPurify?DOMPurify.sanitize(root.innerHTML,{FORBID_TAGS:['script','iframe','object','form','img','video','audio','style'],FORBID_ATTR:['style','src','srcset','onerror','onclick']}):root.innerHTML;const text=root.textContent.replace(/\s+/g,' ').trim();const title=(doc.querySelector('meta[property="og:title"]')?.content||doc.querySelector('h1')?.textContent||doc.title||fallbackTitle||'Untitled').trim();return {title,html:clean,text,wordCount:Math.max(1,text.split(/\s+/).length)}}
-export function canonicalUrl(rawHtml,fileName=''){const doc=new DOMParser().parseFromString(rawHtml,'text/html');const candidate=doc.querySelector('link[rel~=canonical]')?.href||doc.querySelector('meta[property="og:url"]')?.content||'';if(/^https?:/i.test(candidate))return candidate;const fromName=decodeURIComponent(fileName.replace(/\.html?$/i,''));return /^https?:/i.test(fromName)?fromName:''}
-export function hasUnsafeMarkup(html){const doc=new DOMParser().parseFromString(html,'text/html');return Boolean(doc.querySelector('script,iframe,object,form,[onclick],[onerror]'))}
+/* cove — extract.js
+   Stage 2 — extracts and sanitizes article body content into the articles store.
+*/
+
+const DROP =
+  'script,style,noscript,iframe,object,embed,form,button,input,textarea,select,nav,header,footer,aside,svg,canvas,video,audio,picture,source,img';
+export function extractArticle(rawHtml, { fallbackTitle = '' } = {}) {
+  const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+  doc.querySelectorAll(DROP).forEach((n) => n.remove());
+  doc.querySelectorAll('*').forEach((n) => {
+    [...n.attributes].forEach((a) => {
+      if (/^on/i.test(a.name) || ['style', 'src', 'srcset', 'poster'].includes(a.name))
+        n.removeAttribute(a.name);
+    });
+    if (n.tagName === 'A') {
+      const href = n.getAttribute('href');
+      if (!/^https?:/i.test(href || '')) n.removeAttribute('href');
+      else {
+        n.target = '_blank';
+        n.rel = 'noopener noreferrer';
+      }
+    }
+  });
+  const candidates = [
+    ...doc.querySelectorAll('article,main,[role=main],.article,.post,.entry-content'),
+  ];
+  let root =
+    candidates.sort((a, b) => (b.textContent?.length || 0) - (a.textContent?.length || 0))[0] ||
+    doc.body;
+  if (!root || root.textContent.trim().length < 80)
+    throw new Error('No readable article text was found.');
+  const clean = globalThis.DOMPurify
+    ? DOMPurify.sanitize(root.innerHTML, {
+        FORBID_TAGS: ['script', 'iframe', 'object', 'form', 'img', 'video', 'audio', 'style'],
+        FORBID_ATTR: ['style', 'src', 'srcset', 'onerror', 'onclick'],
+      })
+    : root.innerHTML;
+  const text = root.textContent.replace(/\s+/g, ' ').trim();
+  const title = (
+    doc.querySelector('meta[property="og:title"]')?.content ||
+    doc.querySelector('h1')?.textContent ||
+    doc.title ||
+    fallbackTitle ||
+    'Untitled'
+  ).trim();
+  return { title, html: clean, text, wordCount: Math.max(1, text.split(/\s+/).length) };
+}
+export function canonicalUrl(rawHtml, fileName = '') {
+  const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+  const candidate =
+    doc.querySelector('link[rel~=canonical]')?.href ||
+    doc.querySelector('meta[property="og:url"]')?.content ||
+    '';
+  if (/^https?:/i.test(candidate)) return candidate;
+  const fromName = decodeURIComponent(fileName.replace(/\.html?$/i, ''));
+  return /^https?:/i.test(fromName) ? fromName : '';
+}
+export function hasUnsafeMarkup(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return Boolean(doc.querySelector('script,iframe,object,form,[onclick],[onerror]'));
+}
