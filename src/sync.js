@@ -1,6 +1,7 @@
 /* cove — sync.js
-   Cross-device sync via shared/v1/sync.js against the private cove-sync-store
-   repository. Off by default. Mirrors Tide's Settings sync section: token
+   Cross-device sync via shared/v1/sync.js against the shared private
+   webapp-data repository (same repo Tide and other apps use, cove/ folder
+   only). Off by default. Mirrors Tide's Settings sync section: token
    save/clear, device/app context name, a Sync toggle, a manual "Sync now"
    (pullAndMerge → pushNow), and an automatic pullAndMerge on app load.
 
@@ -12,7 +13,7 @@ import * as store from './store.js';
 
 const SYNC = {
   namespace: 'cove',
-  repo: 'cove-sync-store',
+  repo: 'webapp-data',
   branch: 'main',
   dirPath: 'cove',
   basePath: 'cove/data.json',

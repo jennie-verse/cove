@@ -2,6 +2,31 @@
 
 최초 작성일: 2026-08-27 · 최종 검토·재배포 완료 갱신: 2026-08-28
 
+## 2026-08-28 Sync 대상 저장소를 webapp-data로 되돌림 (사용자 결정)
+
+이전 절(바로 아래)에서 Cove 전용 신규 저장소 `cove-sync-store`로 분리했던 것을,
+사용자가 토큰을 2개 대신 1개(기존 `webapp-data-rw`)만 관리하는 쪽을 선택해
+다시 `webapp-data` 공유 저장소로 되돌렸습니다.
+
+- `src/sync.js`의 `SYNC.repo`를 `'cove-sync-store'` → `'webapp-data'`로 되돌림.
+  `dirPath`(`'cove'`)·`basePath`(`'cove/data.json'`)는 애초에 앱별 폴더 구조라
+  변경 없음 — Tide가 쓰는 `webapp-data`의 `tide/` 폴더와 마찬가지로 `cove/`
+  폴더만 사용.
+- 토큰 저장 키는 `cove.syncToken.v1` 그대로 유지(사용자 요청). Tide의 `sync.token.v1`과는
+  다른 키이므로, 사용자가 Safari/Home Screen 양쪽 Cove에 기존 `webapp-data-rw` 토큰
+  값을 직접 붙여넣어야 합니다 — 자동으로 넘어오지 않습니다.
+- `src/journal.js:52`는 처음부터 `repo: 'webapp-data'`를 하드코딩하고 있었고 고친 적이
+  없습니다 — `sync.getToken()`이 이제 `webapp-data` 권한이 있는 토큰을 돌려주므로,
+  Journal을 켜면 코드 수정 없이 정상 동작합니다 (이전 절의 "알려진 트레이드오프"는 해소됨).
+- `docs/SYNC-DAYBOOK-KO.md`에서 `cove-sync-store` 언급을 전부 지우고, "새 토큰 발급"이
+  아니라 "이미 갖고 있는 `webapp-data-rw` 토큰을 그대로 붙여넣기"로 안내를 다시 씀.
+- 이제 안 쓰는 `jennie-verse/cove-sync-store` 저장소는 GitHub에서 삭제함.
+- `sw.js` 캐시를 `cove-v14-ui-icons-layout` → `cove-v15-ui-icons-layout`으로,
+  `app.css`·`app.js` 쿼리를 `v=14` → `v=15`로 올림.
+- `npm test` 16/16 통과, `node --check`로 `src/*.js`·`sw.js` 문법 검사 통과.
+- 배포된 실제 사이트(`https://jennie-verse.github.io/cove/`)에서 Settings → Sync 화면을
+  다시 열어 콘솔 오류 0건, 네트워크 요청 200만 나오는 것을 확인.
+
 ## 2026-08-28 Sync 기능 추가 (Safari ↔ Home Screen)
 
 - `src/sync.js`를 Tide의 Settings sync 동작(토큰 저장/삭제, context 이름, Sync 토글,
