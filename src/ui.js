@@ -29,7 +29,13 @@ export function icon(name) {
     plus: '<path d="M12 5v14M5 12h14"/>',
     external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6H5V6h6"/>',
   };
-  const svg = el('svg', { class: 'ui-icon', viewBox: '0 0 24 24', 'aria-hidden': 'true' });
+  // SVG created with document.createElement() lives in the HTML namespace.
+  // Safari then treats self-closing <path> tags as nested HTML elements and
+  // renders an empty button. Create the icon in the SVG namespace instead.
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'ui-icon');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
   svg.innerHTML = paths[name] || paths.more;
   return svg;
 }

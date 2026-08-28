@@ -23,7 +23,8 @@ const State = {
   flashId: null,
 };
 const main = document.querySelector('#main'),
-  actions = document.querySelector('#headerActions');
+  actions = document.querySelector('#headerActions'),
+  appShell = document.querySelector('#app');
 const iconButton = (name, label, fn) =>
   el('button', { class: 'icon-btn', type: 'button', 'aria-label': label, onclick: fn }, [
     icon(name),
@@ -31,6 +32,7 @@ const iconButton = (name, label, fn) =>
 async function render() {
   window.onscroll = null;
   actions.replaceChildren();
+  appShell.classList.toggle('library-shell', State.view === 'library');
   if (State.view === 'library') await renderLibrary();
   else if (State.view === 'detail') await renderDetail();
   else if (State.view === 'reader') await renderReaderView();
