@@ -1,4 +1,4 @@
-const CACHE = 'cove-v7-icon-refresh';
+const CACHE = 'cove-v8-icon-palette';
 const CORE = [
   './',
   './index.html',
