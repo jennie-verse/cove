@@ -22,7 +22,7 @@
 | `--sky`, `--mint`, `--coral` | 상태·하이라이트 보조색 |
 | `--line`, `--shadow`, `--radius` | 경계선·그림자·모서리 반경 |
 
-본문 대비는 4.5:1 이상을 유지하세요. 상태(Inbox/Reading/Done)와 하이라이트 5색은 **색만으로 구분하지 않습니다** — 탭 이름표·핀 세로선(`.item-card.pinned:before`)·하이라이트 목록의 색 이름 텍스트가 함께 있어야 접근성 규정(webapp-standard.md 5장)을 지킵니다.
+본문 대비는 4.5:1 이상을 유지하세요. 상태(Inbox/Reading/Done)와 하이라이트 5색은 **색만으로 구분하지 않습니다** — 탭 이름표·핀 세로선(`.item-card.pinned:before`)·하이라이트 목록의 색 이름 텍스트가 함께 있어야 접근성 규정(WebApp_House_Style.md 5장)을 지킵니다.
 
 하이라이트 5색 자체는 `src/reader.js`의 `COLORS` 배열과 `reader-host.html`의 `mark[data-color=...]` 규칙 두 곳에 **같은 값**으로 들어 있습니다. 색을 추가/변경할 때는 두 파일을 함께 고치세요.
 
