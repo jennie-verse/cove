@@ -1,89 +1,187 @@
 /* cove — sync.js
-   Stage 3 — thin wrapper around shared/v1/sync.js for optional GitHub sync. Off by default.
-*/
+   Cross-device sync via shared/v1/sync.js against the private cove-sync-store
+   repository. Off by default. Mirrors Tide's Settings sync section: token
+   save/clear, device/app context name, a Sync toggle, a manual "Sync now"
+   (pullAndMerge → pushNow), and an automatic pullAndMerge on app load.
 
+   Safari and the Home Screen app are separate storage contexts even on the
+   same iPhone — each gets its own contextId and its own remote file, merged
+   together on read. Article bodies are never uploaded, only metadata.
+*/
 import * as store from './store.js';
-const keys = {
-  token: 'sync.token.v1',
-  enabled: 'cove.syncEnabled',
-  context: 'cove.syncContextId',
-  label: 'cove.syncContextLabel',
-  last: 'cove.lastSyncAt',
+
+const SYNC = {
+  namespace: 'cove',
+  repo: 'cove-sync-store',
+  branch: 'main',
+  dirPath: 'cove',
+  basePath: 'cove/data.json',
+  enabledKey: 'cove.syncEnabled',
+  tokenKey: 'cove.syncToken.v1',
+  lastSyncKey: 'cove.lastSyncAt',
 };
-const get = (k) => localStorage.getItem(k) || '';
-export const isEnabled = () => get(keys.enabled) === '1';
-export const tokenHint = () => (get(keys.token) ? `••••${get(keys.token).slice(-4)}` : '');
-export function configure({ token, device }) {
-  localStorage.setItem(keys.token, token.trim());
-  localStorage.setItem(keys.enabled, '1');
-  localStorage.setItem(keys.label, device.trim());
-  if (!get(keys.context))
-    localStorage.setItem(
-      keys.context,
-      device
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 50) || `device-${Date.now().toString(36)}`,
-    );
+
+let lastError = null;
+
+function read(key) {
+  try { return localStorage.getItem(key) || ''; } catch { return ''; }
 }
-export function disable() {
-  localStorage.setItem(keys.enabled, '0');
+function write(key, value) {
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch { /* ignore */ }
 }
-function cfg() {
-  const owner = location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i)?.[1] || 'jennie-verse';
-  return { owner, repo: 'webapp-data', branch: 'main', token: get(keys.token) };
-}
-async function api() {
-  // Canonical deployed shared module — same origin-relative path pattern as
-  // folio/tide: https://<account>.github.io/shared/v1/sync.js. cove does not
-  // bundle its own copy (see docs/README-KO.md for why).
+
+export const isEnabled = () => read(SYNC.enabledKey) === '1';
+export const getToken = () => read(SYNC.tokenKey);
+export const tokenHint = () => (getToken() ? `Saved · ends in ${getToken().slice(-4)}` : 'No token saved');
+export const getLastSync = () => Number(read(SYNC.lastSyncKey) || 0);
+export const getLastError = () => lastError;
+export const getContext = () => read(`${SYNC.namespace}.syncContextId`);
+export const getContextLabel = () => read(`${SYNC.namespace}.syncContextLabel`);
+
+async function shared() {
   return import('../../shared/v1/sync.js');
 }
-export async function syncNow() {
-  if (!isEnabled()) throw new Error('Turn on Sync first.');
-  const context = get(keys.context),
-    path = `cove/index.${context}.json`,
-    shared = await api(),
-    config = cfg();
-  const local = {
+
+function pagesOwner() {
+  const match = /^([a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?)\.github\.io$/i.exec(location.hostname);
+  if (match) return match[1];
+  const e = new Error('Cannot determine the GitHub account from this deployment. Sync is disabled on custom domains.');
+  e.type = 'configuration';
+  throw e;
+}
+function cfg() {
+  return { owner: pagesOwner(), repo: SYNC.repo, branch: SYNC.branch, token: getToken() };
+}
+
+export function setToken(value) {
+  write(SYNC.tokenKey, String(value || '').trim());
+}
+export function clearToken() {
+  write(SYNC.tokenKey, '');
+  write(SYNC.enabledKey, '0');
+}
+
+export async function ensureContext(label) {
+  const mod = await shared();
+  const id = await mod.ensureContextId(SYNC.namespace, () => label || '');
+  if (label) mod.setContextLabel(SYNC.namespace, label);
+  return id;
+}
+
+export async function enable(label) {
+  if (!getToken()) throw new Error('Save a token first.');
+  const id = await ensureContext(label);
+  if (!id) throw new Error('Could not identify this device/app.');
+  write(SYNC.enabledKey, '1');
+}
+export function disable() {
+  write(SYNC.enabledKey, '0');
+}
+
+function describeError(e) {
+  if (!e) return 'Unknown error';
+  if (e.type === 'auth') return 'The token is invalid or expired.';
+  if (e.type === 'network') return 'A network error stopped the request.';
+  if (e.type === 'notfound') return 'The repository was not found. Check the name.';
+  if (e.type === 'conflict') return 'A conflict happened and retrying failed.';
+  if (e.type === 'configuration') return e.message;
+  return e.message || 'Unknown error';
+}
+
+function stripArticle(item) {
+  const { hasArticle, ...rest } = item;
+  return { ...rest, hasArticle: false };
+}
+
+async function snapshot() {
+  return {
     app: 'cove',
     schema: 1,
     updatedAt: new Date().toISOString(),
     folders: await store.all('folders'),
-    items: (await store.all('items')).map(({ hasArticle, ...i }) => ({ ...i, hasArticle: false })),
+    items: (await store.all('items')).map(stripArticle),
     annotations: await store.all('annotations'),
   };
-  const remote = await shared.readFile(config, path);
-  if (remote.exists) {
-    try {
-      const data = JSON.parse(remote.content);
-      for (const f of data.folders || []) await store.put('folders', f);
-      for (const i of data.items || []) {
-        const current = await store.getByUrlKey(i.urlKey);
-        await store.put(
-          'items',
-          current
-            ? { ...i, ...current, tags: [...new Set([...(i.tags || []), ...(current.tags || [])])] }
-            : i,
-        );
-      }
-      for (const a of data.annotations || []) await store.put('annotations', a);
-    } catch {}
-  }
-  const merged = {
-    ...local,
-    folders: await store.all('folders'),
-    items: (await store.all('items')).map(({ hasArticle, ...i }) => ({ ...i, hasArticle: false })),
-    annotations: await store.all('annotations'),
-  };
-  await shared.writeFile(config, path, JSON.stringify(merged, null, 2), {
-    sha: remote.sha || undefined,
-    message: 'sync: update cove',
-  });
-  localStorage.setItem(keys.last, String(Date.now()));
-  return merged.items.length;
 }
-export const getToken = () => get(keys.token);
-export const getContext = () => get(keys.context);
-export const getLastSync = () => Number(get(keys.last) || 0);
+
+async function mergeIn(data) {
+  for (const f of data.folders || []) await store.put('folders', f);
+  for (const i of data.items || []) {
+    const current = await store.getByUrlKey(i.urlKey);
+    await store.put(
+      'items',
+      current
+        ? { ...i, ...current, tags: [...new Set([...(i.tags || []), ...(current.tags || [])])] }
+        : i,
+    );
+  }
+  for (const a of data.annotations || []) {
+    const current = await store.get('annotations', a.id);
+    if (!current || (a.updatedAt || 0) >= (current.updatedAt || 0)) await store.put('annotations', a);
+  }
+}
+
+/** Pull every context's remote file and merge into local storage. */
+export async function pullAndMerge() {
+  if (!isEnabled()) return;
+  if (!getToken()) { lastError = 'No token — could not sync.'; return; }
+  const contextId = getContext();
+  if (!contextId) return;
+  try {
+    const mod = await shared();
+    const config = cfg();
+    const dir = await mod.listDir(config, SYNC.dirPath);
+    const files = dir.filter((f) => f.type === 'file' && /^data\..+\.json$/.test(f.name));
+    for (const f of files) {
+      const res = await mod.readFile(config, f.path);
+      if (res && res.exists && res.content) {
+        try { await mergeIn(JSON.parse(res.content)); } catch { /* skip corrupt file */ }
+      }
+    }
+    lastError = null;
+    write(SYNC.lastSyncKey, String(Date.now()));
+  } catch (e) {
+    lastError = describeError(e);
+  }
+}
+
+/** Push this context's current snapshot to its own remote file. */
+export async function pushNow() {
+  if (!isEnabled()) return;
+  if (!getToken()) { lastError = 'No token — could not send.'; return; }
+  const contextId = getContext();
+  if (!contextId) return;
+  try {
+    const mod = await shared();
+    const config = cfg();
+    const path = await mod.contextFilePath(SYNC.basePath, contextId);
+    const payload = JSON.stringify(await snapshot(), null, 2);
+    const remote = await mod.readFile(config, path);
+    await mod.writeFile(config, path, payload, {
+      sha: remote.sha || undefined,
+      message: `sync: cove ${new Date().toISOString().slice(0, 16)}`,
+    });
+    lastError = null;
+    write(SYNC.lastSyncKey, String(Date.now()));
+  } catch (e) {
+    lastError = describeError(e);
+  }
+}
+
+/** Manual "Sync now" — pull first so a push never clobbers a fresher remote item, then push. */
+export async function syncNow() {
+  await pullAndMerge();
+  await pushNow();
+  if (lastError) throw new Error(lastError);
+  return (await store.all('items')).length;
+}
+
+/** Called once at app boot. Fire-and-forget: never blocks the first render. */
+export async function initAutoSync(onMerged) {
+  if (!isEnabled() || !getToken() || !getContext()) return;
+  await pullAndMerge();
+  if (onMerged) onMerged();
+}

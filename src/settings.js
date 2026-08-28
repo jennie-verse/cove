@@ -83,6 +83,10 @@ export async function renderSettings(main, { onBack, onChange }) {
       'Sync now',
       sync.getLastSync() ? `Last ${new Date(sync.getLastSync()).toLocaleString()}` : 'Not synced',
       async () => {
+        if (!sync.isEnabled()) {
+          toast('Turn on Sync first.');
+          return;
+        }
         try {
           const count = await sync.syncNow();
           toast(`${count} items synced.`);
@@ -242,50 +246,155 @@ function restoreDialog(file, onChange) {
   );
 }
 function syncDialog(onChange) {
-  const token = el('input', { type: 'password', placeholder: 'Fine-grained GitHub token' }),
-    device = el('input', {
-      type: 'text',
-      placeholder: 'Device name',
-      value: localStorage.getItem('cove.syncContextLabel') || '',
-    });
-  const body = el('div', {}, [
-    el('p', {
-      class: 'help',
-      text: 'Sync uploads link metadata and annotations to the private webapp-data repository. Article bodies are never uploaded.',
-    }),
-    el('label', { class: 'field' }, [el('span', { text: 'Device name' }), device]),
-    el('label', { class: 'field' }, [el('span', { text: 'Access token' }), token]),
-  ]);
-  openModal(
-    modalLayout('Sync', body, [
-      sync.isEnabled()
-        ? el('button', {
-            class: 'soft-btn',
-            type: 'button',
-            text: 'Turn off',
-            onclick: () => {
-              sync.disable();
-              closeModal();
-              onChange();
-            },
-          })
-        : null,
-      el('button', {
-        class: 'primary-btn',
-        type: 'button',
-        text: 'Turn on',
-        onclick: () => {
-          if (!token.value.trim() || !device.value.trim()) {
-            toast('Enter a device name and token.');
-            return;
-          }
-          sync.configure({ token: token.value, device: device.value });
-          closeModal();
-          onChange();
-        },
+  const paint = () => {
+    const token = el('input', {
+        type: 'password',
+        placeholder: 'Paste token',
+        autocomplete: 'off',
       }),
-    ]),
-  );
+      device = el('input', {
+        type: 'text',
+        placeholder: 'e.g. iphone safari / iphone app',
+        value: sync.getContextLabel(),
+        maxlength: 40,
+        autocomplete: 'off',
+      });
+
+    const toggleBtn = el('button', {
+      type: 'button',
+      class: `toggle${sync.isEnabled() ? ' on' : ''}`,
+      'aria-pressed': String(sync.isEnabled()),
+      'aria-label': 'Turn on Sync',
+      onclick: async () => {
+        if (sync.isEnabled()) {
+          sync.disable();
+          toast('Sync turned off.');
+          paint();
+          onChange();
+          return;
+        }
+        if (!sync.getToken()) {
+          toast('Save a token first.');
+          return;
+        }
+        try {
+          await sync.enable(device.value.trim());
+          toast('Sync turned on.');
+          paint();
+          onChange();
+          sync.pullAndMerge().then(() => {
+            paint();
+            onChange();
+          });
+        } catch (e) {
+          toast(e.message);
+        }
+      },
+    });
+
+    const body = el('div', {}, [
+      el('p', {
+        class: 'help',
+        text: 'Merges Cove links, folders, and annotations between Safari and the Home Screen app through a private GitHub repository. Article bodies are never uploaded.',
+      }),
+      el('label', { class: 'field toggle-field' }, [
+        el('span', { text: sync.isEnabled() ? 'Sync is on' : 'Sync is off' }),
+        toggleBtn,
+      ]),
+      el('label', { class: 'field' }, [
+        el('span', { text: 'Token (GitHub Personal Access Token)' }),
+        token,
+      ]),
+      el('div', { class: 'card-actions' }, [
+        el('button', {
+          class: 'soft-btn',
+          type: 'button',
+          text: 'Save token',
+          onclick: () => {
+            if (!token.value.trim()) {
+              toast('Enter a token.');
+              return;
+            }
+            sync.setToken(token.value);
+            token.value = '';
+            toast('Token saved.');
+            paint();
+          },
+        }),
+        el('button', {
+          class: 'soft-btn',
+          type: 'button',
+          text: 'Clear token',
+          onclick: () => {
+            if (!confirm('Clear the saved token? Sync turns off too.')) return;
+            sync.clearToken();
+            toast('Token cleared.');
+            paint();
+            onChange();
+          },
+        }),
+      ]),
+      el('p', { class: 'help', text: sync.tokenHint() }),
+      el('label', { class: 'field' }, [
+        el('span', { text: "This device/app's name" }),
+        device,
+      ]),
+      el('div', { class: 'card-actions' }, [
+        el('button', {
+          class: 'soft-btn',
+          type: 'button',
+          text: 'Save name',
+          onclick: async () => {
+            const label = device.value.trim();
+            if (!label) {
+              toast('Enter a name.');
+              return;
+            }
+            await sync.ensureContext(label);
+            toast('Name saved.');
+            paint();
+          },
+        }),
+      ]),
+      el('p', {
+        class: 'help',
+        text: 'The same iPhone can have two different names — Safari and the Home Screen app register separately, and that’s normal.',
+      }),
+      el('p', {
+        class: 'help',
+        text: 'Last synced: ' + (sync.getLastSync() ? new Date(sync.getLastSync()).toLocaleString() : 'never'),
+      }),
+      sync.getLastError()
+        ? el('p', { class: 'help danger', text: 'Last error: ' + sync.getLastError() })
+        : null,
+    ]);
+
+    openModal(
+      modalLayout('Sync', body, [
+        el('button', { class: 'soft-btn', type: 'button', text: 'Close', onclick: closeModal }),
+        el('button', {
+          class: 'primary-btn',
+          type: 'button',
+          text: 'Sync now',
+          onclick: async () => {
+            if (!sync.isEnabled()) {
+              toast('Turn on Sync first.');
+              return;
+            }
+            try {
+              const count = await sync.syncNow();
+              toast(`${count} items synced.`);
+            } catch (e) {
+              toast(e.message);
+            }
+            paint();
+            onChange();
+          },
+        }),
+      ]),
+    );
+  };
+  paint();
 }
 function journalDialog(onChange) {
   const include = el('input', { type: 'checkbox' });

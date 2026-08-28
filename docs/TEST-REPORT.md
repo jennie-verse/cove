@@ -2,6 +2,36 @@
 
 최초 작성일: 2026-08-27 · 최종 검토·재배포 완료 갱신: 2026-08-28
 
+## 2026-08-28 Sync 기능 추가 (Safari ↔ Home Screen)
+
+- `src/sync.js`를 Tide의 Settings sync 동작(토큰 저장/삭제, context 이름, Sync 토글,
+  pullAndMerge → pushNow 순서의 Sync now, 앱 로드 시 자동 pullAndMerge)과 동일하게
+  전면 재작성. 대상 저장소를 기존에 쓰던 공유 `webapp-data`에서 Cove 전용 신규 비공개
+  저장소 `jennie-verse/cove-sync-store`로 바꾸고, 토큰도 `sync.token.v1`(Tide와 공유)이
+  아닌 `cove.syncToken.v1`(Cove 전용, 저장소 하나에만 쓸 수 있는 fine-grained PAT)로 분리.
+- `src/settings.js`의 Sync 다이얼로그를 토큰 입력/저장/삭제, context 이름 입력/저장,
+  Sync 토글, 상태·에러 표시, Sync now 버튼을 모두 갖추도록 확장.
+- `src/app.js` `init()`에 `sync.initAutoSync()`를 추가해 Sync가 켜져 있으면 로드 시
+  자동으로 pullAndMerge (fire-and-forget, 첫 렌더를 막지 않음).
+- 리뷰 중 발견해 고친 버그: `pagesOwner()`가 `*.github.io`가 아닌 호스트에서 던지는
+  예외가 `pullAndMerge`/`pushNow`의 `try` 블록 **바깥**에서 만들어지고 있어, 커스텀
+  도메인이나 로컬 테스트 환경에서 `Uncaught (in promise)`로 새어 나가고 있었음.
+  `cfg()` 호출을 `try` 안으로 옮겨 항상 `lastError`로 잡히고 토스트로만 보이도록 수정.
+- `sw.js` 캐시를 `cove-v13-ui-icons-layout` → `cove-v14-ui-icons-layout`으로,
+  `app.css`·`app.js` 쿼리를 `v=13` → `v=14`로 올림 (접미사는 `tests/ui-contract.test.js`의
+  정규식이 리터럴로 요구하므로 그대로 유지).
+- **알려진 트레이드오프**: Cove에 있던 Journal(Daybook projection) 기능은 여전히
+  공유 저장소 `webapp-data`에 쓰도록 되어 있고 `sync.getToken()`을 그대로 가져다 씀 —
+  새 Cove 전용 토큰은 `cove-sync-store`에만 권한이 있어 `webapp-data`에는 쓸 수 없음.
+  Journal은 기본 꺼짐 상태라 당장 사용자에게 보이는 영향은 없지만, 켜면 실패함
+  (이미 있던 `try/catch`로 조용히 무시됨). 필요해지면 별도 작업으로 Journal 전용
+  토큰/저장소를 다시 정리해야 함.
+- `npm test` 16/16 통과, `node --check`로 `src/*.js`·`sw.js` 문법 검사 통과.
+- 로컬 리뷰 브라우저(`localhost`)에서 토큰 저장/삭제, context 자동 생성, Sync 토글
+  on/off, Sync now의 성공·실패(가짜 토큰 + `*.github.io`가 아닌 호스트라 즉시 실패하는
+  경우) 토스트, 콘솔 오류 0건을 확인. `*.github.io` 호스트가 아니라 실제 GitHub Contents
+  API 왕복(두 컨텍스트 간 병합)은 이 환경에서 확인 불가 — 아래 실기기 Pending 참고.
+
 ## 2026-08-28 화면·레이아웃 후속 검토
 
 - 설정(Settings)·정렬(Change sort)·내보내기(Export)·추가(Add link) 등 아이콘이 보이지 않던 원인을 수정했습니다. 동적 SVG를 HTML이 아닌 SVG 네임스페이스로 생성해 Safari를 포함한 실제 브라우저에서 `<path>`가 정상 렌더링됩니다.
@@ -49,8 +79,9 @@
 4. iPhone/iPad 세로·가로, 글자 크기 6단계 전체에서 레이아웃 확인 — 특히 헤더의 폴더 이름이 길 때, 온스크린 키보드가 열렸을 때 Add link 버튼이 가려지지 않는지.
 5. 한글 IME 조합 중 검색·태그 입력이 끊기지 않는지.
 6. iOS 저장 공간 부족 시 `persist()` 적용 후 IndexedDB 유지 여부.
-7. 실제 비공개 `webapp-data` 저장소로 Sync·Daybook 기록이 날짜별로 정상 표시되는지 (canonical `shared/v1`·`v2` 참조 경로를 이번에 고쳤으므로 특히 확인 필요).
+7. 실제 비공개 `webapp-data` 저장소로 Daybook(Journal) 기록이 날짜별로 정상 표시되는지 (canonical `shared/v1`·`v2` 참조 경로를 이번에 고쳤으므로 특히 확인 필요). Journal은 현재 기본 꺼짐이며 새 Cove 전용 Sync 토큰으로는 쓸 수 없음(위 2026-08-28 Sync 절 참고).
 8. Export(다중/폴더) Markdown 파일을 Obsidian에서 열어 형식이 folio와 한 폴더에 잘 모이는지.
+9. **신규** — 실제 Safari와 Home Screen 앱 양쪽에서 `docs/SYNC-DAYBOOK-KO.md` 순서대로 토큰 붙여넣기·Sync 켜기·Sync now를 각각 실행한 뒤, 한쪽에서 저장한 링크가 다른 쪽 Sync now 이후 라이브러리에 나타나는지 확인.
 
 ## 판단이 필요해 남겨 둔 것 (docs/README-KO.md 참고)
 

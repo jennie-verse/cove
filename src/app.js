@@ -13,6 +13,7 @@ import { renderSettings, applyFontStep } from './settings.js';
 import { exportItemMarkdown, exportItemsMarkdown } from './annotation.js';
 import { autoTidy } from './retention.js';
 import * as journal from './journal.js';
+import * as sync from './sync.js';
 const State = {
   view: 'library',
   tab: localStorage.getItem('cove.lastTab') || 'inbox',
@@ -583,6 +584,7 @@ async function init() {
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
   render();
+  sync.initAutoSync(() => { if (State.view === 'library' || State.view === 'settings') render(); });
 }
 document.querySelector('#brandButton').addEventListener('click', () => navigate('library'));
 init();
