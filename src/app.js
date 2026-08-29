@@ -584,7 +584,14 @@ async function init() {
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
   render();
-  sync.initAutoSync(() => { if (State.view === 'library' || State.view === 'settings') render(); });
+  const syncRender = () => { if (State.view === 'library' || State.view === 'settings') render(); };
+  sync.initAutoSync(syncRender);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') sync.resumeOnForeground(syncRender);
+    else sync.pushOnBackground();
+  });
+  window.addEventListener('pagehide', () => sync.pushOnBackground());
+  window.addEventListener('pageshow', (e) => { if (e.persisted) sync.resumeOnForeground(syncRender); });
 }
 document.querySelector('#brandButton').addEventListener('click', () => navigate('library'));
 init();

@@ -125,8 +125,16 @@ async function mergeIn(data) {
   }
 }
 
+let pullInFlight = null;
+
 /** Pull every context's remote file and merge into local storage. */
-export async function pullAndMerge() {
+export function pullAndMerge() {
+  if (pullInFlight) return pullInFlight;
+  pullInFlight = doPull().finally(() => { pullInFlight = null; });
+  return pullInFlight;
+}
+
+async function doPull() {
   if (!isEnabled()) return;
   if (!getToken()) { lastError = 'No token — could not sync.'; return; }
   const contextId = getContext();
@@ -149,8 +157,16 @@ export async function pullAndMerge() {
   }
 }
 
+let pushInFlight = null;
+
 /** Push this context's current snapshot to its own remote file. */
-export async function pushNow() {
+export function pushNow() {
+  if (pushInFlight) return pushInFlight;
+  pushInFlight = doPush().finally(() => { pushInFlight = null; });
+  return pushInFlight;
+}
+
+async function doPush() {
   if (!isEnabled()) return;
   if (!getToken()) { lastError = 'No token — could not send.'; return; }
   const contextId = getContext();
@@ -185,4 +201,25 @@ export async function initAutoSync(onMerged) {
   if (!isEnabled() || !getToken() || !getContext()) return;
   await pullAndMerge();
   if (onMerged) onMerged();
+}
+
+/* iOS Home Screen apps are usually suspended in place rather than reloaded when
+   backgrounded, so initAutoSync's one-shot boot pull only ever ran once at
+   install/first open — reopening the icon later showed stale data even though
+   Safari (which reloads more readily) looked fine. resumeOnForeground() re-pulls
+   every time the app is actually shown again, and pushOnBackground() pushes local
+   changes out before it's hidden, so two contexts stay in sync without a manual
+   "Sync now" tap in the common case. */
+
+/** Called when the app becomes visible again (Home Screen resume, tab refocus, bfcache restore). */
+export async function resumeOnForeground(onMerged) {
+  if (!isEnabled() || !getToken() || !getContext()) return;
+  await pullAndMerge();
+  if (onMerged) onMerged();
+}
+
+/** Called when the app is about to background/close — push local changes so the next resume elsewhere sees them. */
+export function pushOnBackground() {
+  if (!isEnabled() || !getToken() || !getContext()) return;
+  pushNow();
 }
