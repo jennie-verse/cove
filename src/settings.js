@@ -295,7 +295,7 @@ function syncDialog(onChange) {
     const body = el('div', {}, [
       el('p', {
         class: 'help',
-        text: 'Merges Cove links, folders, and annotations between Safari and the Home Screen app through a private GitHub repository. Article bodies are never uploaded.',
+        text: 'Merges Cove links, folders, and annotations between separate storage contexts — Safari, the Home Screen app, another device like a Mac — through a private GitHub repository. Article bodies are never uploaded.',
       }),
       el('label', { class: 'field toggle-field' }, [
         el('span', { text: sync.isEnabled() ? 'Sync is on' : 'Sync is off' }),
@@ -358,7 +358,7 @@ function syncDialog(onChange) {
       ]),
       el('p', {
         class: 'help',
-        text: 'The same iPhone can have two different names — Safari and the Home Screen app register separately, and that’s normal.',
+        text: 'The same iPhone can have two different names — Safari and the Home Screen app register separately, and that’s normal. A Mac browser registers as its own context too.',
       }),
       el('p', {
         class: 'help',

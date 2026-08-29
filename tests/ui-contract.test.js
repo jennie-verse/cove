@@ -14,7 +14,7 @@ test('entry asset build stamps and service worker cache stay aligned', async () 
   const [html, sw] = await Promise.all([read('index.html'), read('sw.js')]);
   const cssBuild = html.match(/app\.css\?v=(\d+)/)?.[1];
   const appBuild = html.match(/app\.js\?v=(\d+)/)?.[1];
-  const cacheBuild = sw.match(/cove-v(\d+)-ui-icons-layout/)?.[1];
+  const cacheBuild = sw.match(/cove-v(\d+)-[\w-]+/)?.[1];
 
   assert.ok(cssBuild, 'CSS build stamp is missing');
   assert.equal(appBuild, cssBuild);

@@ -223,3 +223,13 @@ export function pushOnBackground() {
   if (!isEnabled() || !getToken() || !getContext()) return;
   pushNow();
 }
+
+/** Called right after a Shortcuts `?add=` intake saves a new item. A tab opened only to hand off
+    a link (e.g. a Mac Shortcut that never gets backgrounded, just closed) can't rely on
+    pushOnBackground's hide/pagehide events to actually fire in time — so push immediately and
+    await it before the caller treats intake as done. */
+export async function pushIntakeNow() {
+  if (!isEnabled() || !getToken() || !getContext()) return;
+  await pullAndMerge();
+  await pushNow();
+}

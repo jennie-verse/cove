@@ -576,6 +576,7 @@ async function init() {
       State.flashId = intake.item.id;
       toast(intake.duplicate ? 'Already in cove.' : 'Saved to cove.');
       if (intake.unknownFolder) toast('Folder not found. Saved to Unsorted.');
+      if (!intake.duplicate) await sync.pushIntakeNow();
     } else toast(intake.reason);
   }
   if (localStorage.getItem('cove.autoTidy') === 'on') {
