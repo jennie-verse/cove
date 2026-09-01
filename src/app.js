@@ -387,7 +387,7 @@ async function openOriginal(item) {
   // link is a reasonable "I came back to Cove" signal for the first one.
   await finalizeExternalReadTracking();
   window.open(item.url, '_blank', 'noopener,noreferrer');
-  extRead.writePendingExternal({ itemId: item.id, title: item.title || 'Untitled', startedAt: Date.now() });
+  extRead.writePendingExternal({ itemId: item.id, title: item.title || 'Untitled', startedAt: Date.now(), contentIncluded: journal.contentIncluded() });
   const updated = {
     ...item,
     openedAt: Date.now(),

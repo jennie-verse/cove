@@ -144,7 +144,8 @@ export async function renderReader(main, item, onBack, onMenu) {
         },
         '*',
       );
-      activeReaderItem = { id: item.id, title: item.title || item.host || 'Untitled article', itemType: 'article', contentIncluded: journal.contentIncluded() };
+      const contentIncluded = journal.contentIncluded();
+      activeReaderItem = { id: item.id, title: contentIncluded ? (item.title || item.host || 'Untitled article') : 'Cove article', itemType: 'article', contentIncluded };
       readingSessions.start(activeReaderItem);
     } else if (msg.type === 'cove-selection') {
       currentSelection = msg.quote || '';

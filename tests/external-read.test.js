@@ -35,6 +35,18 @@ test('elapsed within bounds produces an approximate record with a duration', () 
   assert.equal(record.data.source, 'external');
   assert.equal(record.data.activeSeconds, 22 * 60);
   assert.ok(record.data.endedAt, 'a normal-length read must carry an endedAt');
+  assert.equal(record.title, 'Cove article');
+  assert.equal(record.data.contentIncluded, false);
+});
+
+test('external title is included only after the Journal content opt-in', () => {
+  const startedAt = 1000;
+  const record = buildExternalRecord(
+    { itemId: 'item-private', title: 'Private title', startedAt, contentIncluded: true },
+    startedAt + EXTERNAL_MIN_MS,
+  );
+  assert.equal(record.title, 'Private title');
+  assert.equal(record.data.contentIncluded, true);
 });
 
 test('elapsed over the 60-minute cap produces a record with no duration, and is not clamped to 60m', () => {

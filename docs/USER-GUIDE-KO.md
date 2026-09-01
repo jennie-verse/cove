@@ -15,3 +15,5 @@
   - 이 측정 때문에 링크 열기·저장·상태 변경 같은 원래 동작이 지연되거나 막히지 않습니다.
 
 새 백업 파일(schema 3)은 2026-09-01 이후 버전의 Cove에서만 복원됩니다. 자세한 내용은 `BACKUP-RESTORE-KO.md`를 참고하세요.
+
+Journal의 content 포함 설정이 꺼져 있으면 Reader 및 `Open in Safari` 세션 제목은 `Cove article`로 비식별화됩니다. 설정을 명시적으로 켠 경우에만 실제 기사 제목이 Daybook Journal에 포함됩니다.

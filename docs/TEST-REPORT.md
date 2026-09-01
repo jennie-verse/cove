@@ -141,3 +141,9 @@
 - [ ] `Open in Safari`로 글을 열고 정상적으로 다 읽은 뒤 Cove로 돌아왔을 때 Daybook에 `(~NNm)` 형태로 근사 독서시간이 뜨는지
 - [ ] `Open in Safari` 직후 바로 취소하고 돌아왔을 때(30초 미만) 아무 기록도 남지 않는지
 - [ ] 앱을 완전히 종료했다가 며칠 뒤 다시 켰을 때, 오래된 pending 외부 읽기가 duration 없이 정리되는지
+
+## 2026-09-01 세션 제목 개인정보 설정 보강
+
+- Journal content 포함 설정이 꺼진 Reader/외부 읽기 세션은 제목을 `Cove article`로 비식별화합니다. 설정을 켠 경우에만 실제 제목을 기록합니다.
+- external read 테스트에 opt-in/opt-out 제목과 `contentIncluded` 검증을 추가해 `npm test` 24/24 및 syntax 검사를 통과했습니다.
+- Service Worker cache: `cove-v19-session-privacy`; HTML/runtime query stamp: `19`.

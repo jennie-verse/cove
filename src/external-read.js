@@ -56,7 +56,7 @@ export function buildExternalRecord(pending, nowMs = Date.now()) {
   const baseData = {
     itemId: String(pending.itemId), itemType: 'article',
     startedAt: externalReadIso(startedAt),
-    contentIncluded: false, historyAccuracy: 'approximate', source: 'external',
+    contentIncluded: pending.contentIncluded === true, historyAccuracy: 'approximate', source: 'external',
   };
   const data = elapsed > EXTERNAL_MAX_MS
     ? { ...baseData, activeSeconds: 0 }
@@ -67,7 +67,7 @@ export function buildExternalRecord(pending, nowMs = Date.now()) {
     at: externalReadIso(startedAt),
     updatedAt: externalReadIso(nowMs),
     deleted: false,
-    title: String(pending.title || 'Untitled'),
+    title: pending.contentIncluded === true ? String(pending.title || 'Untitled') : 'Cove article',
     data,
   };
 }
