@@ -111,3 +111,33 @@
 ## 판단이 필요해 남겨 둔 것 (docs/README-KO.md 참고)
 
 - 진짜 체크박스 다중 선택 UI 대신 "현재 보이는 목록 내보내기"로 다중 export를 구현함 — 더 큰 UI 작업 없이 계획서의 "여러 개 선택" 요구를 만족시키는 실용적 절충. 필요하면 후속 작업으로 체크박스 선택 모드를 추가할 수 있음.
+
+---
+
+## 2026-09-01 — Daybook Markdown Export 후속 수정 (Revision 4)
+
+### 고친 문제
+
+- **[버그] 5분 idle 이후 in-app Reader 세션이 재개되지 않음.** `src/activity-session.js`의 `stop()`이 `currentItem`까지 지워서, idle heartbeat 뒤에는 같은 글을 계속 읽고 있어도 새 세션이 시작되지 않던 문제. `stop()`은 세션만 종료하고, Reader를 실제로 벗어날 때만 `stopReaderSession()`이 새 `clearItem()`을 호출하도록 분리.
+- **[기능] Open in Safari(외부 링크)로 읽은 시간을 Daybook에 추가.** `src/external-read.js`(신규)가 `openOriginal()` 시점을 pending으로 저장하고, Cove가 다시 foreground가 되면 경과 시간을 근사 duration으로 기록. 30초 미만은 버리고, 60분을 넘으면 duration 없이 시각만 남긴다. `historyAccuracy: "approximate"`, `source: "external"`로 표시되어 in-app Reader의 `"exact"`와 구분된다.
+
+### 새로 추가한 테스트
+
+- `tests/activity-session.test.mjs`: idle 경계 종료, idle 이후 재개 시 새 session ID, background 후 재개 시 세션 분리, 항목 전환 시 이전 세션 종료, activeSeconds 0 미기록, `stop()`/`clearItem()` 차이 — 6건.
+- `tests/external-read.test.js`(신규): 30초 미만 무시, 정상 범위 duration 생성, 60분 초과 시 duration 미생성(60분으로 자르지 않음), 최소 경계값, pending 저장/복구/정리 round-trip, pending 없을 때 무동작, in-app Reader 경로가 `approximate`로 격하되지 않는지 — 7건.
+
+### 통과 — 자동
+
+`npm test` **23/23 통과**(기존 16건 + 신규 7건), `npm run test:syntax` 통과.
+
+### 버전
+
+- `sw.js` `CACHE`: `cove-v17-journal-session` → `cove-v18-session-fix`
+- `index.html`/`sw.js`의 `?v=` 빌드 스탬프: `17` → `18`
+
+### Pending — 실기기에서 확인 필요
+
+- [ ] Reader에서 글을 읽다가 5분 넘게 idle 상태로 둔 뒤 다시 스크롤했을 때 새 읽기 세션이 시작되는지
+- [ ] `Open in Safari`로 글을 열고 정상적으로 다 읽은 뒤 Cove로 돌아왔을 때 Daybook에 `(~NNm)` 형태로 근사 독서시간이 뜨는지
+- [ ] `Open in Safari` 직후 바로 취소하고 돌아왔을 때(30초 미만) 아무 기록도 남지 않는지
+- [ ] 앱을 완전히 종료했다가 며칠 뒤 다시 켰을 때, 오래된 pending 외부 읽기가 duration 없이 정리되는지

@@ -14,6 +14,7 @@ import { exportItemMarkdown, exportItemsMarkdown } from './annotation.js';
 import { autoTidy } from './retention.js';
 import * as journal from './journal.js';
 import * as sync from './sync.js';
+import * as extRead from './external-read.js';
 const State = {
   view: 'library',
   tab: localStorage.getItem('cove.lastTab') || 'inbox',
@@ -378,8 +379,15 @@ async function openItem(item, where) {
   await journal.record('link-activity', updated, { actions: ['opened'] });
   navigate(where, updated.id);
 }
+async function finalizeExternalReadTracking() {
+  await extRead.finalizePendingExternalRead((record) => journal.recordSession(record)).catch(() => {});
+}
 async function openOriginal(item) {
+  // Finalize any still-open pending external read first — opening a second
+  // link is a reasonable "I came back to Cove" signal for the first one.
+  await finalizeExternalReadTracking();
   window.open(item.url, '_blank', 'noopener,noreferrer');
+  extRead.writePendingExternal({ itemId: item.id, title: item.title || 'Untitled', startedAt: Date.now() });
   const updated = {
     ...item,
     openedAt: Date.now(),
@@ -589,11 +597,18 @@ async function init() {
   const syncRender = () => { if (State.view === 'library' || State.view === 'settings') render(); };
   sync.initAutoSync(syncRender);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') sync.resumeOnForeground(syncRender);
+    if (document.visibilityState === 'visible') { sync.resumeOnForeground(syncRender); void finalizeExternalReadTracking(); }
     else sync.pushOnBackground();
   });
   window.addEventListener('pagehide', () => sync.pushOnBackground());
-  window.addEventListener('pageshow', (e) => { if (e.persisted) sync.resumeOnForeground(syncRender); });
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) sync.resumeOnForeground(syncRender);
+    void finalizeExternalReadTracking();
+  });
+  window.addEventListener('focus', () => { void finalizeExternalReadTracking(); });
+  // A pending external read also has to survive the app being fully closed
+  // and relaunched later — recover (or discard, past the 60-minute cap) here.
+  void finalizeExternalReadTracking();
 }
 document.querySelector('#brandButton').addEventListener('click', () => navigate('library'));
 init();

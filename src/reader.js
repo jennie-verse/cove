@@ -45,7 +45,7 @@ const readingSessions = createSessionTracker({
   kind: 'reading-session', itemType: 'article', storageKey: 'cove.journalSessions.v1',
   onRecord: (record) => journal.recordSession(record),
 });
-export function stopReaderSession() { activeReaderItem = null; readingSessions.stop(); }
+export function stopReaderSession() { activeReaderItem = null; readingSessions.clearItem(); }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) readingSessions.stop();
   else if (activeReaderItem) readingSessions.start(activeReaderItem);
