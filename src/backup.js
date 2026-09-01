@@ -5,6 +5,7 @@
 import * as store from './store.js';
 import { normalizeUrlKey, normalizeTags } from './url.js';
 import { download } from './ui.js';
+import { exportSessionLedger, replaceSessionLedger, validateSessionLedger } from './journal.js';
 export async function buildBackup() {
   const [folders, items, annotations] = await Promise.all([
     store.all('folders'),
@@ -13,11 +14,12 @@ export async function buildBackup() {
   ]);
   return {
     app: 'cove',
-    schema: 2,
+    schema: 3,
     exportedAt: new Date().toISOString(),
     folders,
     items,
     annotations,
+    journalSessions: exportSessionLedger(),
     settings: {
       fontStep: Number(localStorage.getItem('cove.fontStep') || 4),
       sort: localStorage.getItem('cove.sort') || 'added-desc',
@@ -36,11 +38,12 @@ export function validateBackup(data) {
   if (
     !data ||
     data.app !== 'cove' ||
-    ![1, 2].includes(Number(data.schema)) ||
+    ![1, 2, 3].includes(Number(data.schema)) ||
     !Array.isArray(data.items) ||
     !Array.isArray(data.folders)
   )
     throw new Error('This is not a supported Cove backup.');
+  if (data.journalSessions !== undefined) validateSessionLedger(data.journalSessions);
   return data;
 }
 export async function restoreBackup(file, mode = 'merge') {
@@ -73,5 +76,6 @@ export async function restoreBackup(file, mode = 'merge') {
     for (const a of (data.annotations || []).filter((a) => a.itemId === raw.id))
       await store.put('annotations', { ...a, id: a.id || store.makeId('a'), itemId: next.id });
   }
+  if (data.journalSessions !== undefined) replaceSessionLedger(data.journalSessions, { merge: mode !== 'replace' });
   return data.items.length;
 }

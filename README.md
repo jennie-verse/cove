@@ -4,6 +4,10 @@ A private-by-design read-it-later PWA for links, saved article text, highlights,
 
 Production: https://jennie-verse.github.io/cove/
 
+When Journal is enabled, the Reader records visible reading sessions with
+start/end times and active minutes. Cove backup schema 3 includes this 90-day
+session ledger while remaining compatible with schema 1 and 2 backups.
+
 ## Development
 
 ```sh

@@ -3,9 +3,11 @@
 */
 
 import * as sync from './sync.js';
+import { createSessionLedger } from './activity-session.js';
 const ENABLED = 'cove.journalEnabled',
   CONTENT = 'cove.journalContent',
   LEDGER = 'cove.journalActivity.v1';
+const sessionLedger = createSessionLedger('cove.journalSessions.v1');
 const read = () => {
   try {
     return JSON.parse(localStorage.getItem(LEDGER) || '[]');
@@ -14,6 +16,11 @@ const read = () => {
   }
 };
 const write = (rows) => localStorage.setItem(LEDGER, JSON.stringify(rows.slice(-1000)));
+function journalConfig() {
+  const owner = location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i)?.[1];
+  if (!owner) throw Object.assign(new Error('Cannot determine the GitHub account from this deployment.'), { code: 'CONFIGURATION' });
+  return { owner, repo: 'webapp-data', branch: 'main', token: sync.getToken() };
+}
 export const isEnabled = () => localStorage.getItem(ENABLED) === '1';
 export const contentIncluded = () => localStorage.getItem(CONTENT) === '1';
 export function configure(enabled, includeContent = false) {
@@ -47,16 +54,28 @@ export async function record(kind, item, data = {}, at = new Date()) {
       context: sync.getContext(),
       namespace: 'cove-journal',
       isEnabled,
-      resolveConfig: async () => {
-        const owner = location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i)?.[1] || 'jennie-verse';
-        return { owner, repo: 'webapp-data', branch: 'main', token: sync.getToken() };
-      },
+      resolveConfig: async () => journalConfig(),
     });
     await client.enqueue(row, { date: module.localDate(at) });
     return true;
   } catch {
     return false;
   }
+}
+export const exportSessionLedger = () => sessionLedger.read();
+export const validateSessionLedger = (rows) => sessionLedger.validate(rows);
+export const replaceSessionLedger = (rows, options = {}) => sessionLedger.replace(rows, options);
+export async function recordSession(row) {
+  if (!row?.id || row.kind !== 'reading-session') return false;
+  sessionLedger.replace([row], { merge: true });
+  if (!isEnabled() || !sync.isEnabled()) return false;
+  try {
+    const module = await import('../../shared/v2/journal.js');
+    if (!module.JOURNAL_KINDS?.cove?.includes('reading-session')) return false;
+    const client = module.createJournalClient({ app: 'cove', context: sync.getContext(), namespace: 'cove-journal', isEnabled, resolveConfig: async () => journalConfig() });
+    await client.enqueue(row, { date: row.at.slice(0, 10) });
+    return true;
+  } catch { return false; }
 }
 export async function backfill(items) {
   if (!isEnabled()) return 0;
@@ -65,5 +84,6 @@ export async function backfill(items) {
     await record('link-saved', item, { importedHistory: true }, new Date(item.addedAt));
     count++;
   }
+  for (const row of sessionLedger.read()) { await recordSession(row); count++; }
   return count;
 }

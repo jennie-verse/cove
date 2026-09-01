@@ -1,17 +1,17 @@
-const CACHE = 'cove-v16-sync-resume';
+const CACHE = 'cove-v17-journal-session';
 const CORE = [
   './',
   './index.html',
   './reader-host.html',
   './manifest.webmanifest',
-  './assets/app.css?v=16',
+  './assets/app.css?v=17',
   './assets/fonts/lexend-400.woff2',
   './assets/fonts/lexend-700.woff2',
   './vendor/purify.min.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './src/app.js?v=16',
+  './src/app.js?v=17',
   './src/store.js',
   './src/url.js',
   './src/ui.js',
@@ -29,6 +29,7 @@ const CORE = [
   './src/retention.js',
   './src/sync.js',
   './src/journal.js',
+  './src/activity-session.js',
   // Canonical shared deployment, one level above every app (see
   // docs/README-KO.md) — outside this SW's own scope, so each entry's
   // failure is swallowed individually and never blocks install.

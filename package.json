@@ -1,1 +1,1 @@
-{"name":"cove","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js"}}
+{"name":"cove","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js","test:syntax":"node --check src/activity-session.js && node --check src/journal.js && node --check src/reader.js && node --check src/reader-frame.js && node --check src/app.js && node --check sw.js"}}

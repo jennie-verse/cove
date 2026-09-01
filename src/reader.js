@@ -5,6 +5,8 @@
 import * as store from './store.js';
 import { el, icon, toast, openModal, closeModal, modalLayout } from './ui.js';
 import { addAnnotation, deleteAnnotation } from './annotation.js';
+import * as journal from './journal.js';
+import { createSessionTracker } from './activity-session.js';
 const COLORS = [
   ['pink', '#f7c8d3'],
   ['yellow', '#f7e3a8'],
@@ -38,6 +40,17 @@ function hostTemplate() {
 // can be called again (back/forward within the reader, highlight refresh)
 // before the previous frame is gone.
 let activeMessageHandler = null;
+let activeReaderItem = null;
+const readingSessions = createSessionTracker({
+  kind: 'reading-session', itemType: 'article', storageKey: 'cove.journalSessions.v1',
+  onRecord: (record) => journal.recordSession(record),
+});
+export function stopReaderSession() { activeReaderItem = null; readingSessions.stop(); }
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) readingSessions.stop();
+  else if (activeReaderItem) readingSessions.start(activeReaderItem);
+});
+window.addEventListener('pagehide', () => readingSessions.stop());
 function setMessageHandler(handler) {
   if (activeMessageHandler) window.removeEventListener('message', activeMessageHandler);
   activeMessageHandler = handler;
@@ -45,6 +58,7 @@ function setMessageHandler(handler) {
 }
 
 export async function renderReader(main, item, onBack, onMenu) {
+  stopReaderSession();
   const article = await store.get('articles', item.id);
   if (!article) {
     toast('This saved article is no longer stored. Re-capture it to read again.');
@@ -130,9 +144,12 @@ export async function renderReader(main, item, onBack, onMenu) {
         },
         '*',
       );
+      activeReaderItem = { id: item.id, title: item.title || item.host || 'Untitled article', itemType: 'article', contentIncluded: journal.contentIncluded() };
+      readingSessions.start(activeReaderItem);
     } else if (msg.type === 'cove-selection') {
       currentSelection = msg.quote || '';
     } else if (msg.type === 'cove-scroll') {
+      readingSessions.signal();
       const p = Math.max(0, Math.min(1, msg.progress || 0));
       document.documentElement.style.setProperty('--progress', `${p * 100}%`);
       clearTimeout(progressTimer);
@@ -146,7 +163,7 @@ export async function renderReader(main, item, onBack, onMenu) {
           }),
         350,
       );
-    }
+    } else if (msg.type === 'cove-activity') readingSessions.signal();
   });
   const template = await hostTemplate();
   iframe.srcdoc = template;

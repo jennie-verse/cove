@@ -119,5 +119,10 @@
     }, 200);
   });
 
+  const reportActivity = () => parent.postMessage({ type: 'cove-activity' }, '*');
+  document.addEventListener('pointerdown', reportActivity, { passive: true });
+  document.addEventListener('keydown', reportActivity);
+  document.addEventListener('selectionchange', reportActivity);
+
   parent.postMessage({ type: 'cove-ready' }, '*');
 })();

@@ -8,7 +8,7 @@ import { libraryData, renderCard, counts } from './library.js';
 import { addLink, handleUrlIntake } from './intake.js';
 import { folderPicker, manageFolders } from './folders.js';
 import { normalizeTags } from './url.js';
-import { renderReader } from './reader.js';
+import { renderReader, stopReaderSession } from './reader.js';
 import { renderSettings, applyFontStep } from './settings.js';
 import { exportItemMarkdown, exportItemsMarkdown } from './annotation.js';
 import { autoTidy } from './retention.js';
@@ -31,6 +31,7 @@ const iconButton = (name, label, fn) =>
     icon(name),
   ]);
 async function render() {
+  if (State.view !== 'reader') stopReaderSession();
   window.onscroll = null;
   actions.replaceChildren();
   appShell.classList.toggle('library-shell', State.view === 'library');
