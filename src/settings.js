@@ -58,6 +58,10 @@ export async function renderSettings(main, { onBack, onChange }) {
         renderSettings(main, { onBack, onChange });
       },
     ),
+  );
+  const organize = el('section', { class: 'section' });
+  organize.append(
+    row('Folders', 'Manage folders', () => manageFolders(onChange)),
     row('Import HTML', 'Saved article files', () =>
       pickFiles('.html,.htm', true, async (files) => {
         const result = await importHtmlFiles(files);
@@ -67,10 +71,6 @@ export async function renderSettings(main, { onBack, onChange }) {
         onChange();
       }),
     ),
-  );
-  const organize = el('section', { class: 'section' });
-  organize.append(
-    row('Folders', 'Manage folders', () => manageFolders(onChange)),
     row('Export backup', 'JSON · article bodies excluded', exportBackup),
     row('Restore backup', 'Merge or replace', () =>
       pickFiles('.json', false, async (files) => restoreDialog(files[0], onChange)),
@@ -123,12 +123,12 @@ export async function renderSettings(main, { onBack, onChange }) {
   main.append(
     sectionTitle('Display'),
     display,
+    sectionTitle('Connections'),
+    connect,
     sectionTitle('Reading'),
     reading,
     sectionTitle('Library & data'),
     organize,
-    sectionTitle('Connections'),
-    connect,
     sectionTitle('Danger'),
     danger,
   );
