@@ -97,10 +97,23 @@ export async function renderReader(main, item, onBack, onMenu) {
     : article.html;
   let notes = await store.annotationsFor(item.id);
   async function onDeleteAnnotation(id) {
+    const removed = notes.find((n) => n.id === id);
     await deleteAnnotation(id);
     notes = notes.filter((n) => n.id !== id);
     iframe.contentWindow?.postMessage({ type: 'cove-unhighlight', id }, '*');
     currentAnnoSection = refreshAnnotations();
+    if (!removed) return;
+    toast('Note deleted.', {
+      action: {
+        label: 'Undo',
+        run: async () => {
+          await store.put('annotations', { ...removed, deletedAt: null, updatedAt: Date.now() });
+          notes = [...notes, removed];
+          iframe.contentWindow?.postMessage({ type: 'cove-highlight', ...removed, deletedAt: null }, '*');
+          currentAnnoSection = refreshAnnotations();
+        },
+      },
+    });
   }
   function refreshAnnotations() {
     const next = renderAnnotations(notes, onDeleteAnnotation);
