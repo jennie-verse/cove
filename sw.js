@@ -1,17 +1,17 @@
-const CACHE = 'cove-v22-journalannotations';
+const CACHE = 'cove-v23-swcachefix';
 const CORE = [
   './',
   './index.html',
   './reader-host.html',
   './manifest.webmanifest',
-  './assets/app.css?v=22',
+  './assets/app.css?v=23',
   './assets/fonts/lexend-400.woff2',
   './assets/fonts/lexend-700.woff2',
   './vendor/purify.min.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './src/app.js?v=22',
+  './src/app.js?v=23',
   './src/store.js',
   './src/url.js',
   './src/ui.js',
@@ -41,7 +41,13 @@ self.addEventListener('install', (e) =>
   e.waitUntil(
     (async () => {
       const c = await caches.open(CACHE);
-      await Promise.all(CORE.map((u) => c.add(u).catch(() => {})));
+      // { cache: 'reload' } bypasses the browser's own HTTP cache — without
+      // it, a recently-visited asset can still be HTTP-cache-fresh and get
+      // copied straight into the new versioned CACHE unchanged, silently
+      // defeating a CACHE bump.
+      await Promise.all(CORE.map((u) => fetch(new Request(u, { cache: 'reload' }))
+        .then((r) => (r.ok ? c.put(u, r) : null))
+        .catch(() => {})));
       self.skipWaiting();
     })(),
   ),
