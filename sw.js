@@ -1,4 +1,4 @@
-const CACHE = 'cove-v20-notes-undo';
+const CACHE = 'cove-v21-delete-tombstones';
 const CORE = [
   './',
   './index.html',

@@ -111,7 +111,9 @@ export async function renderSettings(main, { onBack, onChange }) {
         confirm('Delete every Cove item?') &&
         confirm('This cannot be undone. Delete all items now?')
       ) {
+        const items = await store.all('items');
         await store.clearAll();
+        sync.markDeletedMany(items.map((item) => item.urlKey));
         toast('All Cove data deleted.');
         onChange();
         onBack();

@@ -20,6 +20,7 @@ const SYNC = {
   enabledKey: 'cove.syncEnabled',
   tokenKey: 'cove.syncToken.v1',
   lastSyncKey: 'cove.lastSyncAt',
+  tombstonesKey: 'cove.deletedItems.v1',
 };
 
 let lastError = null;
@@ -97,6 +98,39 @@ function stripArticle(item) {
   return { ...rest, hasArticle: false };
 }
 
+/* ── Deletion tombstones ────────────────────────────────────────────────
+   Deletion is marked only when the user explicitly deletes here — never
+   inferred from an item being absent locally. Tombstones ride along in the
+   pushed snapshot so other devices/contexts drop the same item instead of
+   resurrecting it on the next merge, and are applied here on pull so a
+   deletion recorded elsewhere removes the item locally too. */
+function tombstones() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SYNC.tombstonesKey) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch { return []; }
+}
+function writeTombstones(list) {
+  try { localStorage.setItem(SYNC.tombstonesKey, JSON.stringify(list.slice(-2000))); } catch { /* ignore */ }
+}
+export function markDeleted(urlKey) {
+  if (!urlKey) return;
+  const list = tombstones().filter((t) => t.urlKey !== urlKey);
+  list.push({ urlKey, deletedAt: Date.now() });
+  writeTombstones(list);
+}
+export function markDeletedMany(urlKeys) {
+  const set = new Set(urlKeys.filter(Boolean));
+  if (!set.size) return;
+  const list = tombstones().filter((t) => !set.has(t.urlKey));
+  set.forEach((urlKey) => list.push({ urlKey, deletedAt: Date.now() }));
+  writeTombstones(list);
+}
+export function unmarkDeleted(urlKey) {
+  if (!urlKey) return;
+  writeTombstones(tombstones().filter((t) => t.urlKey !== urlKey));
+}
+
 async function snapshot() {
   return {
     app: 'cove',
@@ -105,12 +139,21 @@ async function snapshot() {
     folders: await store.all('folders'),
     items: (await store.all('items')).map(stripArticle),
     annotations: await store.all('annotations'),
+    deletions: tombstones(),
   };
 }
 
 async function mergeIn(data) {
   for (const f of data.folders || []) await store.put('folders', f);
+  const deleted = new Set(tombstones().map((t) => t.urlKey));
+  (data.deletions || []).forEach((t) => { if (t && t.urlKey) deleted.add(t.urlKey); });
+  for (const t of data.deletions || []) {
+    if (!t || !t.urlKey) continue;
+    const current = await store.getByUrlKey(t.urlKey);
+    if (current) await store.deleteItemCascade(current.id);
+  }
   for (const i of data.items || []) {
+    if (deleted.has(i.urlKey)) continue;
     const current = await store.getByUrlKey(i.urlKey);
     await store.put(
       'items',

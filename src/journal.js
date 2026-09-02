@@ -26,6 +26,24 @@ export const contentIncluded = () => localStorage.getItem(CONTENT) === '1';
 export function configure(enabled, includeContent = false) {
   localStorage.setItem(ENABLED, enabled ? '1' : '0');
   localStorage.setItem(CONTENT, includeContent ? '1' : '0');
+  reportStatus({ journalEnabled: enabled, contentIncluded: includeContent, enabledAt: enabled ? localIso() : undefined }).catch(() => {});
+}
+export async function reportStatus(extra = {}) {
+  if (!sync.isEnabled() || !sync.getContext()) return false;
+  try {
+    const module = await import('../../shared/v2/journal.js');
+    const client = module.createJournalClient({
+      app: 'cove',
+      context: sync.getContext(),
+      namespace: 'cove-journal',
+      isEnabled,
+      resolveConfig: async () => journalConfig(),
+    });
+    await client.reportStatus({ journalEnabled: isEnabled(), contentIncluded: contentIncluded(), ...extra });
+    return true;
+  } catch {
+    return false;
+  }
 }
 function localIso(value = new Date()) {
   const d = value instanceof Date ? value : new Date(value),
@@ -85,5 +103,6 @@ export async function backfill(items) {
     count++;
   }
   for (const row of sessionLedger.read()) { await recordSession(row); count++; }
+  await reportStatus({ lastSuccessfulWriteAt: localIso() });
   return count;
 }

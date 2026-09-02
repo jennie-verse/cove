@@ -519,10 +519,12 @@ async function itemMenu(item, action) {
         const article = await store.get('articles', item.id),
           notes = await store.annotationsFor(item.id);
         await store.deleteItemCascade(item.id);
+        sync.markDeleted(item.urlKey);
         toast('Item deleted.', {
           action: {
             label: 'Undo',
             run: async () => {
+              sync.unmarkDeleted(item.urlKey);
               await store.put('items', item);
               if (article) await store.put('articles', article);
               for (const n of notes) await store.put('annotations', n);
