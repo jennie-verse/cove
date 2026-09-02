@@ -129,6 +129,7 @@ export async function renderReader(main, item, onBack, onMenu) {
       iframe.contentWindow?.postMessage({ type: 'cove-clear-selection' }, '*');
       currentSelection = '';
       currentAnnoSection = refreshAnnotations();
+      journal.recordAnnotation(note, item).catch(() => {});
     },
   });
 

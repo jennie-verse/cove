@@ -256,7 +256,7 @@ function syncDialog(onChange) {
       }),
       device = el('input', {
         type: 'text',
-        placeholder: 'e.g. iphone safari / iphone app',
+        placeholder: 'iphone-home',
         value: sync.getContextLabel(),
         maxlength: 40,
         autocomplete: 'off',

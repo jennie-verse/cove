@@ -83,6 +83,30 @@ export async function record(kind, item, data = {}, at = new Date()) {
 export const exportSessionLedger = () => sessionLedger.read();
 export const validateSessionLedger = (rows) => sessionLedger.validate(rows);
 export const replaceSessionLedger = (rows, options = {}) => sessionLedger.replace(rows, options);
+// Projects a highlight or a whole-article note into the journal (Daybook
+// gap fix): addAnnotation() only wrote to Cove's own IndexedDB, so neither
+// highlights, highlight+note pairs, nor whole-document notes ever reached
+// Daybook even with Journal turned on. Mirrors folio's projectAnnotation —
+// a highlight's own note (if any) rides along on the SAME record as its
+// quote (kind stays highlight-created/-updated), while a note made with no
+// selected text (annotation.kind === 'note') is its own note-created/-updated
+// record with no quote, so Daybook can tell the two apart.
+export async function recordAnnotation(annotation, item, event = 'created') {
+  if (!annotation?.id || !item?.id) return false;
+  const kind = annotation.kind === 'note'
+    ? (event === 'updated' ? 'note-updated' : 'note-created')
+    : (event === 'updated' ? 'highlight-updated' : 'highlight-created');
+  const includeContent = contentIncluded();
+  const quote = includeContent ? String(annotation.quote || '').trim() : '';
+  const note = includeContent ? String(annotation.note || '').trim() : '';
+  return record(kind, item, {
+    annotationId: annotation.id,
+    ...(annotation.color ? { color: annotation.color } : {}),
+    ...(quote ? { quote } : {}),
+    ...(note ? { note } : {}),
+    contentIncluded: includeContent,
+  });
+}
 export async function recordSession(row) {
   if (!row?.id || row.kind !== 'reading-session') return false;
   sessionLedger.replace([row], { merge: true });

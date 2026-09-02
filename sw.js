@@ -1,17 +1,17 @@
-const CACHE = 'cove-v21-delete-tombstones';
+const CACHE = 'cove-v22-journalannotations';
 const CORE = [
   './',
   './index.html',
   './reader-host.html',
   './manifest.webmanifest',
-  './assets/app.css?v=20',
+  './assets/app.css?v=22',
   './assets/fonts/lexend-400.woff2',
   './assets/fonts/lexend-700.woff2',
   './vendor/purify.min.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './src/app.js?v=20',
+  './src/app.js?v=22',
   './src/store.js',
   './src/url.js',
   './src/ui.js',
