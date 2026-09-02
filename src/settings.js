@@ -10,6 +10,7 @@ import { importHtmlFiles } from './import.js';
 import { releaseOldArticles } from './retention.js';
 import * as sync from './sync.js';
 import * as journal from './journal.js';
+import { APP_BUILD } from './version.js';
 const sizes = [6, 8, 10, 12, 14, 17];
 export function applyFontStep() {
   const step = Math.max(1, Math.min(6, Number(localStorage.getItem('cove.fontStep') || 4)));
@@ -104,6 +105,10 @@ export async function renderSettings(main, { onBack, onChange }) {
       toast('Shortcut URL copied.');
     }),
   );
+  const about = el('section', { class: 'section' });
+  about.append(
+    el('p', { class: 'row-value', text: `App version ${APP_BUILD}` }),
+  );
   const danger = el('section', { class: 'section' });
   danger.append(
     row('Delete all items', 'Two confirmations', async () => {
@@ -129,6 +134,8 @@ export async function renderSettings(main, { onBack, onChange }) {
     reading,
     sectionTitle('Library & data'),
     organize,
+    sectionTitle('About'),
+    about,
     sectionTitle('Danger'),
     danger,
   );

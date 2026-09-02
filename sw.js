@@ -1,17 +1,17 @@
-const CACHE = 'cove-v24-2026.09.02-settingsaudit1';
+const CACHE = 'cove-v25-2026.09.02-about1';
 const CORE = [
   './',
   './index.html',
   './reader-host.html',
   './manifest.webmanifest',
-  './assets/app.css?v=24',
+  './assets/app.css?v=25',
   './assets/fonts/lexend-400.woff2',
   './assets/fonts/lexend-700.woff2',
   './vendor/purify.min.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './src/app.js?v=24',
+  './src/app.js?v=25',
   './src/store.js',
   './src/url.js',
   './src/ui.js',
@@ -21,6 +21,7 @@ const CORE = [
   './src/intake.js',
   './src/backup.js',
   './src/settings.js',
+  './src/version.js',
   './src/import.js',
   './src/extract.js',
   './src/reader.js',
