@@ -16,6 +16,7 @@
 .topbar{height:auto;min-height:44px}
 .tabs{overflow:visible}
 .tab{min-height:30px}
+.tab{justify-content:center;text-align:center}
 .segmented button{position:relative;min-height:30px;padding-block:6px}
 .segmented button::after{content:"";position:absolute;inset:-7px 0}
 .tab:first-child,.segmented button:first-child{border-radius:13px 0 0 13px}

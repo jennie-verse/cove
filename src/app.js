@@ -134,7 +134,7 @@ async function renderLibrary() {
   else
     data.rows.forEach((item) => {
       const card = renderCard(item, data.articleMap.get(item.id), {
-        onOpen: (id) => navigate('detail', id),
+        onOpen: () => openItem(item, 'reader'),
         onMenu: itemMenu,
       });
       if (item.id === State.flashId) {
@@ -350,7 +350,7 @@ async function renderReaderView() {
   await renderReader(
     main,
     item,
-    () => navigate('detail', item.id),
+    () => navigate('library'),
     async () => {
       const folders = await store.all('folders');
       exportItemMarkdown(item, folders.find((f) => f.id === item.folderId)?.name || 'Unsorted');
