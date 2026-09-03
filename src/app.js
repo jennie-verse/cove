@@ -133,8 +133,9 @@ async function renderLibrary() {
   if (!data.rows.length) list.append(emptyState(data.items.length));
   else
     data.rows.forEach((item) => {
+      const hasArticle = data.articleMap.has(item.id);
       const card = renderCard(item, data.articleMap.get(item.id), {
-        onOpen: () => openItem(item, 'reader'),
+        onOpen: () => (hasArticle ? openItem(item, 'reader') : openOriginal(item)),
         onMenu: itemMenu,
       });
       if (item.id === State.flashId) {
