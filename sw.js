@@ -1,17 +1,17 @@
-const CACHE = 'cove-v28-2026.09.03-controlcompact1';
+const CACHE = 'cove-v29-2026.09.03-controlcompact2';
 const CORE = [
   './',
   './index.html',
   './reader-host.html',
   './manifest.webmanifest',
-  './assets/app.css?v=28',
+  './assets/app.css?v=29',
   './assets/fonts/lexend-400.woff2',
   './assets/fonts/lexend-700.woff2',
   './vendor/purify.min.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './src/app.js?v=28',
+  './src/app.js?v=29',
   './src/store.js',
   './src/url.js',
   './src/ui.js',

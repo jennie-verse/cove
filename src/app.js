@@ -511,6 +511,15 @@ async function itemMenu(item, action) {
       },
     }),
     el('button', {
+      class: 'folder-option',
+      type: 'button',
+      text: 'Details (tags, note, export)…',
+      onclick: () => {
+        closeModal();
+        navigate('detail', item.id);
+      },
+    }),
+    el('button', {
       class: 'folder-option danger',
       type: 'button',
       text: 'Delete',
