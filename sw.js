@@ -1,4 +1,4 @@
-const CACHE = 'cove-v26-2026.09.03-boxfix1';
+const CACHE = 'cove-v26-2026.09.03-boxfix2';
 const CORE = [
   './',
   './index.html',
