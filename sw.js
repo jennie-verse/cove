@@ -1,17 +1,17 @@
-const CACHE = 'cove-v26-2026.09.03-boxfix3';
+const CACHE = 'cove-v27-2026.09.03-headercontrols1';
 const CORE = [
   './',
   './index.html',
   './reader-host.html',
   './manifest.webmanifest',
-  './assets/app.css?v=26',
+  './assets/app.css?v=27',
   './assets/fonts/lexend-400.woff2',
   './assets/fonts/lexend-700.woff2',
   './vendor/purify.min.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './src/app.js?v=26',
+  './src/app.js?v=27',
   './src/store.js',
   './src/url.js',
   './src/ui.js',
