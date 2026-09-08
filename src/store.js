@@ -99,6 +99,27 @@ export async function clearAll() {
     t.onerror = () => reject(t.error);
   });
 }
+/** Commit a fully prepared restore together. If any write fails, IndexedDB
+    rolls back both the new records and the replace-mode clears. */
+export async function commitBackup({ folders, items, annotations }, replace = false) {
+  const db = await openDB();
+  const names = ['items', 'folders', 'articles', 'annotations'];
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(names, 'readwrite');
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error || new Error('Restore cancelled. Local data was kept.'));
+    try {
+      if (replace) names.forEach((name) => transaction.objectStore(name).clear());
+      for (const [name, rows] of Object.entries({ folders, items, annotations })) {
+        rows.forEach((row) => transaction.objectStore(name).put(row));
+      }
+    } catch (error) {
+      transaction.abort();
+      reject(error);
+    }
+  });
+}
 export function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`;
 }

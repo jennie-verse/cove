@@ -15,18 +15,6 @@ import { autoTidy } from './retention.js';
 import * as journal from './journal.js';
 import * as sync from './sync.js';
 import * as extRead from './external-read.js';
-// One-time fresh-start reset for the 2026.09.05 first release: wipe this
-// app's own localStorage keys (never the shared/v1 cross-app sync
-// namespace, which lives outside this prefix and outside this app's
-// folder) so an existing install behaves like a first-time install. The
-// matching IndexedDB wipe happens in init(), before store.openDB().
-const FRESH_START_FLAG = 'cove.freshStart-2026.09.05';
-const needsFreshStart = !localStorage.getItem(FRESH_START_FLAG);
-if (needsFreshStart) {
-  for (const k of Object.keys(localStorage)) {
-    if (k.startsWith('cove.') && k !== FRESH_START_FLAG) localStorage.removeItem(k);
-  }
-}
 const State = {
   view: 'library',
   tab: localStorage.getItem('cove.lastTab') || 'inbox',
@@ -56,8 +44,8 @@ async function render() {
 }
 async function renderLibrary() {
   main.className = 'library-view';
-  const data = await libraryData(State),
-    c = counts(data.items);
+  let data = await libraryData(State);
+  const c = counts(data.items);
   const folderName =
     State.folderId === 'all'
       ? 'All folders'
@@ -113,13 +101,23 @@ async function renderLibrary() {
     value: State.query,
   });
   let timer;
-  search.addEventListener('input', (e) => {
+  const updateSearch = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => {
-      State.query = e.target.value;
-      render();
+    State.query = search.value;
+    const query = State.query;
+    timer = setTimeout(async () => {
+      const next = await libraryData({ ...State, query });
+      if (!search.isConnected || State.view !== 'library' || State.query !== query) return;
+      data = next;
+      shown.textContent = `${data.rows.length} shown`;
+      paintRows();
     }, 150);
+  };
+  search.addEventListener('input', (event) => {
+    if (!event.isComposing) updateSearch();
   });
+  search.addEventListener('compositionstart', () => clearTimeout(timer));
+  search.addEventListener('compositionend', updateSearch);
   const searchWrap = el('div', { class: 'search-wrap' }, [icon('search'), search]);
   const toolbar = el('div', { class: 'toolbar' }, [
     searchWrap,
@@ -135,27 +133,37 @@ async function renderLibrary() {
       );
     }),
   ]);
+  const shown = el('span', { text: `${data.rows.length} shown`, 'aria-live': 'polite' });
   const sortline = el('div', { class: 'sortline' }, [
     el('span', {
       text: `Sort: ${{ 'added-desc': 'Newest', 'added-asc': 'Oldest', title: 'Title', domain: 'Domain' }[State.sort]}`,
     }),
-    el('span', { text: `${data.rows.length} shown` }),
+    shown,
   ]);
   const list = el('div', { class: 'list' });
-  if (!data.rows.length) list.append(emptyState(data.items.length));
-  else
-    data.rows.forEach((item) => {
-      const hasArticle = data.articleMap.has(item.id);
-      const card = renderCard(item, data.articleMap.get(item.id), {
-        onOpen: () => (hasArticle ? openItem(item, 'reader') : openOriginal(item)),
-        onMenu: itemMenu,
+  function paintRows() {
+    list.replaceChildren();
+    if (!data.rows.length) list.append(State.query.trim()
+      ? el('div', { class: 'empty' }, [
+          el('h2', { text: 'No matching links' }),
+          el('p', { class: 'lede', text: 'Try a different search, status, or folder.' }),
+        ])
+      : emptyState(data.items.length));
+    else
+      data.rows.forEach((item) => {
+        const hasArticle = data.articleMap.has(item.id);
+        const card = renderCard(item, data.articleMap.get(item.id), {
+          onOpen: () => (hasArticle ? openItem(item, 'reader') : openOriginal(item)),
+          onMenu: itemMenu,
+        });
+        if (item.id === State.flashId) {
+          card.animate([{ background: '#fbe4ea' }, { background: '#fff' }], { duration: 1300 });
+          State.flashId = null;
+        }
+        list.append(card);
       });
-      if (item.id === State.flashId) {
-        card.animate([{ background: '#fbe4ea' }, { background: '#fff' }], { duration: 1300 });
-        State.flashId = null;
-      }
-      list.append(card);
-    });
+  }
+  paintRows();
   main.replaceChildren(
     tabs,
     toolbar,
@@ -597,13 +605,6 @@ function editTags(item) {
 }
 async function init() {
   applyFontStep();
-  if (needsFreshStart) {
-    await new Promise((resolve) => {
-      const req = indexedDB.deleteDatabase('cove');
-      req.onsuccess = req.onerror = req.onblocked = () => resolve();
-    });
-    localStorage.setItem(FRESH_START_FLAG, '1');
-  }
   await store.openDB();
   try {
     await navigator.storage?.persist?.();

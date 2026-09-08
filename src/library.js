@@ -63,7 +63,7 @@ export function renderCard(item, article, { onOpen, onMenu }) {
     tabindex: '0',
     onclick: () => onOpen(item.id),
     onkeydown: (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.target === card && (e.key === 'Enter' || e.key === ' ')) {
         e.preventDefault();
         onOpen(item.id);
       }

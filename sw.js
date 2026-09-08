@@ -1,4 +1,4 @@
-const CACHE = 'cove-v1-2026.09.05-release';
+const CACHE = 'cove-v1-2026.09.07-librarycare';
 const CORE = [
   './',
   './index.html',

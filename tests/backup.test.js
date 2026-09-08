@@ -51,3 +51,16 @@ test('a schema-1 (stage 1) backup still validates', () => {
   const data = validateBackup({ app: 'cove', schema: 1, items: [], folders: [] });
   assert.equal(data.schema, 1);
 });
+
+test('malformed records are rejected before restore can replace local data', () => {
+  const base = { app: 'cove', schema: 3, folders: [], items: [], annotations: [] };
+  for (const item of [null, {}, { id: 'c1', url: 'javascript:alert(1)' },
+    { id: 'c1', url: 'https://example.com', tags: 'broken' },
+    { id: 'c1', url: 'https://example.com', state: 'missing' }]) {
+    assert.throws(() => validateBackup({ ...base, items: [item] }));
+  }
+  assert.throws(() => validateBackup({ ...base, folders: [{ id: 'f1' }] }));
+  assert.throws(() => validateBackup({ ...base, annotations: [{ id: 'a1', itemId: 'missing' }] }));
+  const item = { id: 'c1', url: 'https://example.com', tags: [] };
+  assert.throws(() => validateBackup({ ...base, items: [item, item] }));
+});

@@ -40,3 +40,12 @@
 - 실제 iPhone / iPad Safari에서 Home Screen 추가 후 기본 동작(오프라인 진입, 레이아웃, 터치 제스처) 확인
 - GitHub Sync: 실제 `webapp-data-rw` 토큰으로 Safari ↔ Home Screen 양방향 pull/push 라운드트립 확인
 - 이미 설치된 Home Screen 아이콘에서 서비스워커 업데이트가 정상적으로 적용되는지(캐시 버전 갱신 후 재실행 시 새 버전 반영) 확인
+
+
+## 2026-09-08 안정성 개선 검증
+
+- 수정: 검색 포커스 및 한글 조합 유지, 복원 전 검증과 단일 트랜잭션 복원, 중복 병합 방지.
+- 로컬 회귀 검사 및 JavaScript 문법 검사: 통과.
+- Chromium 1280×900 / 390×844: 주요 조작, 재시작 후 기존 데이터 보존, 화면·페이지 오류 검사 통과.
+- Service Worker를 통한 오프라인 앱 재실행: 통과.
+- 실제 iPhone/iPad Safari, iCloud 공유, 실제 비공개 GitHub 데이터 동기화: 실기기 확인 필요.

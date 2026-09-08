@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sessionRecords, createSessionTracker } from '../src/activity-session.js';
+import { sessionRecords, createSessionTracker, MIN_SESSION_SECONDS } from '../src/activity-session.js';
 
 test('reading-session records preserve wall-clock bounds and active seconds', () => {
   const rows = sessionRecords({ id: 'session-1', itemId: 'item-1', title: 'Item', itemType: 'item', startedAt: new Date(2026, 7, 31, 10, 2).getTime(), endedAt: new Date(2026, 7, 31, 10, 32).getTime(), activeSeconds: 1500 }, 'reading-session');
@@ -77,7 +77,7 @@ test('signal() after idle timeout starts a second session with a new ID', () => 
   clock.advance(IDLE_MS + 1000);
   const resumed = tracker.signal(clock.now());
   assert.equal(resumed, true, 'signal() after idle must resume with a new session, not return false');
-  clock.advance(30 * 1000);
+  clock.advance(MIN_SESSION_SECONDS * 1000);
   tracker.stop(clock.now());
   assert.equal(records.length, 2, 'two distinct sessions must be published');
   const ids = records.map((r) => r.id.split(':')[0]);
@@ -116,9 +116,9 @@ test('switching items ends the previous session', () => withTracker(() => {
     onRecord: (r) => records.push(r), now: clock.now, isVisible: () => true,
   });
   tracker.start({ id: 'doc-1', title: 'Doc 1' }, clock.now());
-  clock.advance(60 * 1000);
+  clock.advance(MIN_SESSION_SECONDS * 1000);
   tracker.start({ id: 'doc-2', title: 'Doc 2' }, clock.now());
-  clock.advance(60 * 1000);
+  clock.advance(MIN_SESSION_SECONDS * 1000);
   tracker.stop(clock.now());
   assert.equal(records.length, 2);
   assert.equal(records[0].data.itemId, 'doc-1');
@@ -155,4 +155,23 @@ test('clearItem() prevents signal() from resuming after idle, stop() alone does 
   tracker.clearItem(clock.now());
   // After clearItem() (leaving the document/board entirely), signal() must not resume.
   assert.equal(tracker.signal(clock.now()), false, 'clearItem() must clear currentItem so signal() cannot resume');
+}));
+
+
+test('the three-minute reading threshold is inclusive and drops shorter visits', () => withTracker(() => {
+  const clock = makeClock(Date.now());
+  const records = [];
+  const tracker = createSessionTracker({
+    kind: 'reading-session', storageKey: 'test.threshold', now: clock.now,
+    onRecord: (row) => records.push(row), isVisible: () => true,
+  });
+  tracker.start({ id: 'short', title: 'Short visit' });
+  clock.advance(MIN_SESSION_SECONDS * 1000 - 1);
+  tracker.stop();
+  assert.equal(records.length, 0);
+  tracker.start({ id: 'read', title: 'Reading' });
+  clock.advance(MIN_SESSION_SECONDS * 1000);
+  tracker.stop();
+  assert.equal(records.length, 1);
+  assert.equal(records[0].data.activeSeconds, MIN_SESSION_SECONDS);
 }));

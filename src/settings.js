@@ -224,19 +224,29 @@ function pickFiles(accept, multiple, handler) {
 }
 function restoreDialog(file, onChange) {
   if (!file) return;
-  const body = el('p', { text: 'Merge keeps local items. Replace deletes local data first.' });
+  const body = el('p', { text: 'Merge keeps local items. Replace replaces local data after the backup is checked.' });
+  let restoring = false;
+  const restore = async (mode) => {
+    if (restoring) return;
+    restoring = true;
+    try {
+      const n = await restoreBackup(file, mode);
+      closeModal();
+      toast(`${n} items restored.`);
+      onChange();
+    } catch (error) {
+      toast(error.message || 'Backup could not be restored.');
+    } finally {
+      restoring = false;
+    }
+  };
   openModal(
     modalLayout('Restore backup', body, [
       el('button', {
         class: 'soft-btn',
         type: 'button',
         text: 'Merge',
-        onclick: async () => {
-          const n = await restoreBackup(file, 'merge');
-          closeModal();
-          toast(`${n} items restored.`);
-          onChange();
-        },
+        onclick: () => restore('merge'),
       }),
       el('button', {
         class: 'outline-btn danger',
@@ -244,10 +254,7 @@ function restoreDialog(file, onChange) {
         text: 'Replace',
         onclick: async () => {
           if (confirm('Replace all local Cove data?')) {
-            const n = await restoreBackup(file, 'replace');
-            closeModal();
-            toast(`${n} items restored.`);
-            onChange();
+            await restore('replace');
           }
         },
       }),
