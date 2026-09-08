@@ -30,8 +30,13 @@ export function openDB() {
         s.createIndex('createdAt', 'createdAt');
       }
     };
-    req.onsuccess = () => resolve(req.result);
-  });
+    req.onsuccess = () => {
+      const db = req.result;
+      db.onversionchange = () => { db.close(); dbPromise = undefined; };
+      db.onclose = () => { dbPromise = undefined; };
+      resolve(db);
+    };
+  }).catch(error => { dbPromise = undefined; throw error; });
   return dbPromise;
 }
 function request(req) {
@@ -45,15 +50,18 @@ async function tx(storeNames, mode, work) {
   return new Promise((resolve, reject) => {
     const t = db.transaction(storeNames, mode);
     let value;
+    t.oncomplete = () => Promise.resolve(value).then(resolve, reject);
+    t.onerror = () => reject(t.error || new Error('Database transaction failed'));
+    t.onabort = () => reject(t.error || new Error('Database transaction aborted'));
     try {
       value = work(t);
+      // Observe request rejection immediately, before the abort event, so a
+      // handled duplicate/quota failure cannot become an unhandled rejection.
+      Promise.resolve(value).catch(reject);
     } catch (e) {
+      try { t.abort(); } catch {}
       reject(e);
-      return;
     }
-    t.oncomplete = async () => resolve(await value);
-    t.onerror = () => reject(t.error);
-    t.onabort = () => reject(t.error);
   });
 }
 export const all = (store) =>
@@ -90,14 +98,8 @@ export async function deleteItemCascade(id) {
   });
 }
 export async function clearAll() {
-  const db = await openDB();
   const names = ['items', 'folders', 'articles', 'annotations'];
-  return new Promise((resolve, reject) => {
-    const t = db.transaction(names, 'readwrite');
-    names.forEach((n) => t.objectStore(n).clear());
-    t.oncomplete = resolve;
-    t.onerror = () => reject(t.error);
-  });
+  return tx(names, 'readwrite', t => names.forEach(name => t.objectStore(name).clear()));
 }
 /** Commit a fully prepared restore together. If any write fails, IndexedDB
     rolls back both the new records and the replace-mode clears. */
