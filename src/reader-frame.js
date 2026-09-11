@@ -103,10 +103,14 @@
     clearTimeout(selectionTimer);
     selectionTimer = setTimeout(() => {
       const sel = getSelection();
-      const quote = sel && !sel.isCollapsed ? sel.toString().trim() : '';
-      if (quote && sel.anchorNode && content.contains(sel.anchorNode)) {
-        parent.postMessage({ type: 'cove-selection', quote }, '*');
-      }
+      const raw = sel && !sel.isCollapsed ? sel.toString().trim() : '';
+      const inContent = raw && sel.anchorNode && content.contains(sel.anchorNode);
+      // Post the empty string too, not just a real quote — reader.js's
+      // currentSelection otherwise never learns a selection collapsed (tap
+      // elsewhere to deselect, Escape, another app in front) and keeps
+      // whatever quote it saw last. Tapping a highlight color afterwards
+      // would then silently save THAT stale quote instead of nothing.
+      parent.postMessage({ type: 'cove-selection', quote: inContent ? raw : '' }, '*');
     }, 120);
   });
 
