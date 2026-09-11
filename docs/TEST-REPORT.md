@@ -57,3 +57,41 @@
 - 검증: 전체 기존 테스트 및 추가 회귀 테스트, JavaScript 구문 검사. 격리된 Chromium에서 데스크톱 1280×900/모바일 390×844 저장·새로고침·실패 복구 검증. Browser plugin not available; bundled Playwright 사용.
 - 주입 검증: 실제 IndexedDB 중복 키, 중간 clear 실패 및 재연결.
 - 한계: 실제 iPhone Safari/Home Screen 및 개인 계정의 실서버 동기화는 직접 시험하지 않음.
+
+
+## 2026-09-11 folio 점검 계기로 선택(selection) 릴레이 재검토
+
+folio의 HTML 리더에서 발견한 "샌드박스 iframe의 텍스트 선택이 바깥 앱에
+전달되지 않는" 오류를 계기로, 같은 구조(별도 origin의 샌드박스 iframe +
+postMessage로 선택 상태 릴레이)를 쓰는 cove의 Reader도 다시 점검했습니다.
+
+**진단 결과**: cove의 릴레이 자체는 처음부터 올바르게 구현되어 있었습니다
+(`src/reader-frame.js`가 자신의 `selectionchange`를 감지해 `cove-selection`
+메시지로 인용문을 바깥에 보고). folio처럼 완전히 끊겨 있지는 않았지만,
+더 좁은 범위의 실제 버그를 하나 발견했습니다.
+
+**발견한 문제**: 선택이 실제 문구를 담고 있을 때만 `cove-selection`을
+보내고, 선택이 풀렸을 때(다른 곳을 탭해서 해제, 방향키, 다른 앱으로 전환
+후 복귀 등)는 아무것도 보내지 않았습니다. 그 결과 `reader.js`의
+`currentSelection`은 마지막으로 본 인용문을 계속 들고 있었고, 사용자가
+아무것도 선택하지 않은 상태에서 하이라이트 색상 버튼을 누르면 "Select
+article text first" 안내 대신 **이전에 봤던 낡은 인용문이 그대로
+하이라이트로 저장**되는 조용한 오류가 있었습니다.
+
+**고친 것**: `src/reader-frame.js`가 선택이 풀렸을 때도 빈 문자열로
+`cove-selection`을 보내도록 수정. `reader.js` 쪽은 이미 빈 문자열을 올바르게
+처리하고 있어 변경 없음.
+
+**자동 테스트**: `npm test` 38/38 통과, 문법 검사 통과.
+
+**실제 GitHub Pages(HTTPS) 배포본에서 직접 확인한 것**: IndexedDB에 테스트
+기사를 직접 심어 Reader를 열고, (1) 텍스트 선택 → 다른 곳 탭해 해제 →
+하이라이트 색 버튼 클릭 → 수정 전이었다면 조용히 저장됐을 낡은 인용문 대신
+"Select article text first." 안내가 뜸을 확인, (2) `cove-selection` 메시지를
+직접 가로채 실제 선택 시 인용문이, 해제 시 빈 문자열이 정확히 순서대로
+전달됨을 확인(`["This is a sample par", ""]`). 테스트에 쓴 항목은 확인 후
+모두 삭제해 실제 라이브러리를 비운 상태로 되돌렸습니다.
+
+**Pending — 실기기 확인 필요**
+
+- [ ] 실제 iPhone/iPad Safari의 길게 눌러 선택 제스처에서도 동일하게 동작하는지
