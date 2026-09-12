@@ -155,12 +155,20 @@ async function mergeIn(data) {
   for (const i of data.items || []) {
     if (deleted.has(i.urlKey)) continue;
     const current = await store.getByUrlKey(i.urlKey);
-    await store.put(
-      'items',
-      current
-        ? { ...i, ...current, tags: [...new Set([...(i.tags || []), ...(current.tags || [])])] }
-        : i,
-    );
+    if (!current) { await store.put('items', i); continue; }
+    // Last-write-wins per field (folderId included) so a folder move made on
+    // one device reaches items that already exist on another — previously
+    // `{...i, ...current}` kept every local field forever and a remote
+    // folder change never landed. `id` stays the local key always: the
+    // articles store is keyed by it, and swapping it would fork the record
+    // instead of updating it. `hasArticle` stays local too, since the
+    // pushed snapshot always carries stripArticle's false.
+    const remoteNewer = (i.updatedAt || 0) > (current.updatedAt || 0);
+    const merged = remoteNewer ? { ...current, ...i } : { ...i, ...current };
+    merged.id = current.id;
+    merged.hasArticle = current.hasArticle;
+    merged.tags = [...new Set([...(i.tags || []), ...(current.tags || [])])];
+    await store.put('items', merged);
   }
   for (const a of data.annotations || []) {
     const current = await store.get('annotations', a.id);

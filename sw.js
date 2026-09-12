@@ -1,4 +1,4 @@
-const CACHE = 'cove-v1-2026.09.11-selectionfix';
+const CACHE = 'cove-v1-2026.09.12-foldersync';
 const CORE = [
   './',
   './index.html',
