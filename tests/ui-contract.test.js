@@ -31,3 +31,18 @@ test('responsive layout keeps rows full-width and controls touch-friendly', asyn
   assert.match(css, /\.highlight-toolbar\{flex-wrap:wrap/);
   assert.match(css, /\.library-shell \.topbar,main\.library-view/);
 });
+
+test('foldable and Mac layout rules exist and the build stamp matches everywhere', async () => {
+  const [css, sw, version, frame] = await Promise.all([
+    read('assets/app.css'), read('sw.js'), read('src/version.js'), read('src/reader-frame.js'),
+  ]);
+  assert.match(css, /overscroll-behavior:none/);
+  assert.match(css, /touch-action:manipulation/);
+  assert.match(css, /@media\(min-width:760px\)\{\.settings-view\{max-width:760px/);
+  assert.match(css, /@media\(max-width:400px\)/);
+  assert.match(css, /@media\(hover:hover\) and \(pointer:fine\)/);
+  const build = version.match(/APP_BUILD = "([^"]+)"/)?.[1];
+  assert.equal(build, '2026.11.12-foldable1');
+  assert.ok(sw.includes(`cove-v1-${build}`));
+  assert.match(frame, /addEventListener\('resize'/);
+});

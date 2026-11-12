@@ -8,6 +8,8 @@ When Journal is enabled, the Reader records visible reading sessions with
 start/end times and active minutes. Cove backup schema 3 includes this 90-day
 session ledger while remaining compatible with schema 1 and 2 backups.
 
+Targets: iPhone Duo (foldable, folded phone / unfolded tablet width) and Mac Safari; layout follows window width, so folding while running is supported.
+
 ## Development
 
 ```sh

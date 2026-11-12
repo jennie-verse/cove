@@ -95,3 +95,11 @@ article text first" 안내 대신 **이전에 봤던 낡은 인용문이 그대�
 **Pending — 실기기 확인 필요**
 
 - [ ] 실제 iPhone/iPad Safari의 길게 눌러 선택 제스처에서도 동일하게 동작하는지
+
+## 2026-11-12 — 접이식 기기(iPhone Duo)·Mac 최적화 (cove-v1-2026.11.12-foldable1)
+
+- 변경: 가장자리 오버스크롤 방지, 터치 지연 제거(`touch-action: manipulation`), 설정 화면 폭 제한·가운데 정렬(760px 이상), 대화상자 폭, 400px 이하 상단 버튼 간격, Mac 전용 hover(`hover:hover` + `pointer:fine`), Reader 프레임이 폭 변경(접기/펼치기, 창 크기 변경) 시 읽던 위치를 비율로 유지하고 진행률을 다시 보고.
+- 저장 데이터 형식, localStorage/IndexedDB 키, 동기화 규약, 색상은 그대로입니다.
+- 확인한 것: `npm test`·문법 검사 통과, Playwright(Chromium)로 360x780 / 840x760 / 1000x700 / 1440x900에서 가로 넘침 없음·콘솔 오류 없음·스크린샷 확인, Reader 프레임 리사이즈 시 위치 유지.
+- 실제 iPhone Duo 접기/펼치기 확인은 quill에서만 사용자가 직접 했고, Cove는 **실기기 확인이 아직 필요**합니다.
+- 참고(기존 동작, 이번 변경과 무관): Chromium에서는 Reader 프레임(srcdoc)이 앱의 CSP(`style-src 'self'`)를 물려받아 프레임 안 인라인 스타일이 차단되는 콘솔 오류가 보입니다. Safari에서의 동작은 실기기 확인이 필요합니다.

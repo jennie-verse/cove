@@ -114,8 +114,31 @@
     }, 120);
   });
 
+  // Fold/unfold or a Mac window resize reflows the article to a new height, so
+  // the pixel scroll offset would point somewhere else. Keep the reading
+  // position by restoring the last known progress, then report it.
+  let lastProgress = 0;
+  const currentProgress = () =>
+    scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  let resizeTimer = 0;
+  let lastWidth = innerWidth;
+  addEventListener('resize', () => {
+    if (innerWidth === lastWidth) return; // height-only changes (toolbars) keep the offset
+    lastWidth = innerWidth;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      resizeTimer = 0;
+      scrollTo({
+        top: lastProgress * Math.max(0, document.documentElement.scrollHeight - innerHeight),
+        behavior: 'instant',
+      });
+      parent.postMessage({ type: 'cove-scroll', progress: lastProgress }, '*');
+    }, 150);
+  });
+
   let scrollTimer;
   addEventListener('scroll', () => {
+    if (!resizeTimer) lastProgress = Math.max(0, Math.min(1, currentProgress()));
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => {
       const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
