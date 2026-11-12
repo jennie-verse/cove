@@ -38,11 +38,12 @@ test('foldable and Mac layout rules exist and the build stamp matches everywhere
   ]);
   assert.match(css, /overscroll-behavior:none/);
   assert.match(css, /touch-action:manipulation/);
-  assert.match(css, /@media\(min-width:760px\)\{\.settings-view\{max-width:760px/);
+  assert.ok(css.includes('@media (min-width: 640px) and (min-height: 560px){.settings-view{max-width:760px'));
+  assert.match(css, /@media\(min-width:800px\)\{\.app-shell\{width:min\(100%,1040px\)/);
   assert.match(css, /@media\(max-width:400px\)/);
   assert.match(css, /@media\(hover:hover\) and \(pointer:fine\)/);
   const build = version.match(/APP_BUILD = "([^"]+)"/)?.[1];
-  assert.equal(build, '2026.11.12-foldable1');
+  assert.equal(build, '2026.11.12-foldable2');
   assert.ok(sw.includes(`cove-v1-${build}`));
   assert.match(frame, /addEventListener\('resize'/);
 });
