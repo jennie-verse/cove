@@ -1,4 +1,4 @@
-const CACHE = 'cove-v1-2026.11.12-foldable3';
+const CACHE = 'cove-v1-2026.11.12-foldable4';
 const CORE = [
   './',
   './index.html',

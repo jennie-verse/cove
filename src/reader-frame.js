@@ -136,6 +136,17 @@
     }, 150);
   });
 
+  // A deliberate user scroll right after a resize wins over the pending
+  // position restore, so the page never jumps back under the finger.
+  const cancelRestore = () => {
+    if (!resizeTimer) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = 0;
+  };
+  addEventListener('wheel', cancelRestore, { passive: true });
+  addEventListener('touchstart', cancelRestore, { passive: true });
+  addEventListener('keydown', cancelRestore);
+
   let scrollTimer;
   addEventListener('scroll', () => {
     if (!resizeTimer) lastProgress = Math.max(0, Math.min(1, currentProgress()));

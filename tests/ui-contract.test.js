@@ -43,7 +43,7 @@ test('foldable and Mac layout rules exist and the build stamp matches everywhere
   assert.match(css, /@media\(max-width:400px\)/);
   assert.match(css, /@media\(hover:hover\) and \(pointer:fine\)/);
   const build = version.match(/APP_BUILD = "([^"]+)"/)?.[1];
-  assert.equal(build, '2026.11.12-foldable3');
+  assert.equal(build, '2026.11.12-foldable4');
   assert.ok(sw.includes(`cove-v1-${build}`));
   assert.match(frame, /addEventListener\('resize'/);
 });
@@ -61,4 +61,17 @@ test('reader frame styles load from a file allowed by the inherited app CSP', as
   assert.match(css, /var\(--reader-size/);
   assert.match(css, /mark\[data-color='pink'\]/);
   assert.ok(sw.includes("'./src/reader-host.css'"));
+});
+
+test('centered dialogs and the highlight bar respect the safe-area insets', async () => {
+  const [css, frame] = await Promise.all([read('assets/app.css'), read('src/reader-frame.js')]);
+  // Tier A centered dialog must stay below the top inset and above the bottom one.
+  assert.ok(css.includes('calc(100dvh - 2*max(env(safe-area-inset-top),env(safe-area-inset-bottom)) - 24px)'));
+  // Below tier A the same cap applies (equals the UA default at zero inset).
+  assert.ok(css.includes('.modal{max-height:calc(100dvh - 2*max(env(safe-area-inset-top),env(safe-area-inset-bottom)) - 30px)}'));
+  // Sticky 44px highlight controls must not sit in the home-indicator zone.
+  assert.match(css, /\.highlight-toolbar\{bottom:calc\(12px \+ env\(safe-area-inset-bottom\)\)\}/);
+  // A user scroll right after a resize cancels the pending position restore.
+  assert.match(frame, /addEventListener\('wheel', cancelRestore/);
+  assert.match(frame, /addEventListener\('touchstart', cancelRestore/);
 });

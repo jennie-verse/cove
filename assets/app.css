@@ -26,6 +26,10 @@
 
 /* Foldable (folded 466x678, unfolded portrait 669x951, landscape 951x669) and Mac. Tier A = tablet portrait (single column); tier B = the 800px rule above. */
 button,input,label,summary,a,select,textarea{touch-action:manipulation}
-@media (min-width: 640px) and (min-height: 560px){.settings-view{max-width:760px;margin-inline:auto}.modal{width:min(80vw,520px);max-height:min(88dvh,760px);overflow:auto}}
+.modal{max-height:calc(100dvh - 2*max(env(safe-area-inset-top),env(safe-area-inset-bottom)) - 30px)}
+@media (min-width: 640px) and (min-height: 560px){.settings-view{max-width:760px;margin-inline:auto}.modal{width:min(80vw,520px);max-height:min(88dvh,760px,calc(100dvh - 2*max(env(safe-area-inset-top),env(safe-area-inset-bottom)) - 24px));overflow:auto}}
 @media(max-width:400px){.header-actions{gap:4px}.folder-btn{max-width:104px}.icon-btn{width:44px}.reader-controls>*{flex:1 1 auto}}
 @media(hover:hover) and (pointer:fine){.icon-btn:hover,.soft-btn:hover,.outline-btn:hover,.folder-btn:hover,.mini-btn:hover{background:var(--tint)}.primary-btn:hover{filter:brightness(1.06)}.item-card:hover{border-color:var(--rose)}.tab:not([aria-selected=true]):hover,.segmented button:not(.active):hover,.folder-option:not(.active):hover{background:var(--tint)}}
+
+/* Keep the sticky highlight bar (44px controls) above the home indicator; no change at zero inset. */
+.highlight-toolbar{bottom:calc(12px + env(safe-area-inset-bottom))}
