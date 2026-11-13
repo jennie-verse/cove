@@ -31,8 +31,31 @@ const readerVars = () => ({
 // sandboxed iframe whose `src` is a network URL; a `srcdoc` frame makes no
 // network request at all and is unaffected.
 let hostTemplatePromise;
+const sha256b64 = async (text) =>
+  btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))));
+// Offline-safe host document. A sandboxed opaque-origin frame is not controlled
+// by the service worker, so its own <link>/<script src> requests only work from
+// the HTTP cache. The app shell can read those files through the service worker,
+// so inline exactly those two blocks — allowed by sha256 in index.html's CSP and
+// reader-host.html's CSP, never by 'unsafe-inline'. Any problem (fetch failure,
+// hash not in the CSP, e.g. a half-updated cache) falls back to the plain file.
+export async function buildHostDocument(fetchText = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.text(); }), cspText = document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || '') {
+  const template = await fetchText('./reader-host.html');
+  try {
+    const link = '<link rel="stylesheet" href="./src/reader-host.css" />';
+    const script = '<script src="./src/reader-frame.js"></script>';
+    if (!template.includes(link) || !template.includes(script)) return template;
+    const [css, js] = await Promise.all([fetchText('./src/reader-host.css'), fetchText('./src/reader-frame.js')]);
+    if (js.includes('</script')) return template;
+    const [cssHash, jsHash] = await Promise.all([sha256b64(css), sha256b64(js)]);
+    if (!cspText.includes(`'sha256-${cssHash}'`) || !cspText.includes(`'sha256-${jsHash}'`)) return template;
+    return template.replace(link, () => `<style>${css}</style>`).replace(script, () => `<script>${js}</script>`);
+  } catch {
+    return template;
+  }
+}
 function hostTemplate() {
-  if (!hostTemplatePromise) hostTemplatePromise = fetch('./reader-host.html').then((r) => r.text());
+  if (!hostTemplatePromise) hostTemplatePromise = buildHostDocument().catch((e) => { hostTemplatePromise = undefined; throw e; });
   return hostTemplatePromise;
 }
 

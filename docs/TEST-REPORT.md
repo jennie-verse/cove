@@ -129,3 +129,10 @@ article text first" 안내 대신 **이전에 봤던 낡은 인용문이 그대�
 - Reader 프레임: 리사이즈 직후 150ms 안에 사용자가 휠/터치/키로 스크롤하면 대기 중이던 위치 복원을 취소해 화면이 되돌아가지 않음(테스트 추가).
 - 확인(Chromium, 로컬 정적 서버): 폰 크기(390x844, 466x678) BASE 대비 기하·스타일 차이는 touch-action과 의도한 400px 이하 버튼 간격뿐. 같은 origin에서 BASE 데이터(폴더/태그/글/하이라이트/설정)가 HEAD에서 그대로 유지되고 SW가 새 캐시로 교체·옛 캐시 삭제. 백업 내보내기→전체 삭제→병합 복원, 추가·검색·폴더·삭제 동작 확인.
 - 알려진 한계(기존 동작): Reader 프레임은 sandbox(opaque origin)라 서비스 워커가 그 안의 `reader-frame.js`/`reader-host.css` 요청을 가로채지 못해, HTTP 캐시가 만료된 뒤 오프라인에서는 본문이 비어 보일 수 있습니다. 실기기(Safari) 확인 필요.
+
+## 2026-11-13 — Reader 오프라인 읽기 복구 (cove-v1-2026.11.12-foldable5)
+
+- 문제(기존 동작): sandbox(opaque origin) Reader 프레임은 서비스 워커의 제어를 받지 못해 `reader-frame.js`/`reader-host.css`를 HTTP 캐시가 있을 때만 불러왔습니다. HTTP 캐시를 지운 뒤 오프라인에서는 본문이 비어 보였습니다.
+- 수정: 앱 셸(`src/reader.js`)이 서비스 워커를 통해 두 파일을 읽어 srcdoc에 인라인으로 넣고, `index.html`과 `reader-host.html`의 CSP에 해당 두 블록의 `sha256` 해시만 추가했습니다(`'unsafe-inline'`·와일드카드 없음, sandbox는 그대로 `allow-same-origin` 없음). 해시가 맞지 않거나 파일을 못 읽으면 기존 `<link>`/`<script src>` 방식으로 되돌아갑니다.
+- 주의: `src/reader-frame.js` 또는 `src/reader-host.css`를 고치면 해시가 바뀌므로 `index.html`·`reader-host.html`의 해시도 갱신해야 합니다(`tests/ui-contract.test.js`가 실패하며 새 값을 알려 줍니다).
+- 확인(Chromium, 로컬): HTTP 캐시 삭제 + 오프라인 + 새로고침 후 저장 글이 스타일 적용 상태로 표시, 온라인에서도 동일, Aa 크기·폭·하이라이트 정상. 글 안의 `<script>`·`onerror`·`onclick`은 실행되지 않고, 프레임에서 `parent.document`·`localStorage`·`cookie`·`indexedDB` 접근은 모두 SecurityError. Safari 실기기 확인 필요.

@@ -43,7 +43,7 @@ test('foldable and Mac layout rules exist and the build stamp matches everywhere
   assert.match(css, /@media\(max-width:400px\)/);
   assert.match(css, /@media\(hover:hover\) and \(pointer:fine\)/);
   const build = version.match(/APP_BUILD = "([^"]+)"/)?.[1];
-  assert.equal(build, '2026.11.12-foldable4');
+  assert.equal(build, '2026.11.12-foldable5');
   assert.ok(sw.includes(`cove-v1-${build}`));
   assert.match(frame, /addEventListener\('resize'/);
 });
@@ -74,4 +74,33 @@ test('centered dialogs and the highlight bar respect the safe-area insets', asyn
   // A user scroll right after a resize cancels the pending position restore.
   assert.match(frame, /addEventListener\('wheel', cancelRestore/);
   assert.match(frame, /addEventListener\('touchstart', cancelRestore/);
+});
+
+test('inline reader script/style are pinned by sha256 in both CSPs, sandbox unchanged, no unsafe-inline', async () => {
+  const { createHash } = await import('node:crypto');
+  const [index, host, js, css, reader] = await Promise.all([
+    read('index.html'), read('reader-host.html'), read('src/reader-frame.js'),
+    read('src/reader-host.css'), read('src/reader.js'),
+  ]);
+  const hash = (t) => `'sha256-${createHash('sha256').update(t, 'utf8').digest('base64')}'`;
+  const csp = (html) => html.match(/Content-Security-Policy"?\s+content="([^"]+)"/)[1];
+  const directive = (policy, name) => policy.split(';').map((d) => d.trim()).find((d) => d.startsWith(`${name} `));
+  const pageCsp = csp(index), hostCsp = csp(host);
+  for (const [policy, label] of [[pageCsp, 'index.html'], [hostCsp, 'reader-host.html']]) {
+    assert.ok(directive(policy, 'script-src').includes(hash(js)), `${label} script-src must contain ${hash(js)} (src/reader-frame.js changed?)`);
+    assert.ok(directive(policy, 'style-src').includes(hash(css)), `${label} style-src must contain ${hash(css)} (src/reader-host.css changed?)`);
+  }
+  assert.doesNotMatch(pageCsp, /unsafe-inline|unsafe-eval|\*/);
+  assert.doesNotMatch(hostCsp, /unsafe-inline|unsafe-eval|\*/);
+  assert.ok(!js.includes('</script'), 'inlined script text must not close the script tag');
+  // The two markers reader.js swaps for inline blocks must exist in the host file.
+  assert.ok(host.includes('<link rel="stylesheet" href="./src/reader-host.css" />'));
+  assert.ok(host.includes('<script src="./src/reader-frame.js"></script>'));
+  // The sandbox stays opaque-origin: scripts and popups only, never same-origin.
+  assert.ok(reader.includes("sandbox: 'allow-scripts allow-popups allow-popups-to-escape-sandbox'"));
+  assert.doesNotMatch(reader, /sandbox['"]?\s*[:=][^\n]*allow-same-origin/);
+  assert.doesNotMatch(reader, /setAttribute\(\s*['"]sandbox['"][^\n]*allow-same-origin/);
+  // The host CSP keeps everything else locked down.
+  assert.match(hostCsp, /default-src 'none'/);
+  assert.match(hostCsp, /connect-src 'none'/);
 });

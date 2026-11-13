@@ -8,12 +8,20 @@
       allow-same-origin token (see src/reader.js). That makes it cross-origin
       from the app shell, so script-src 'self' below can only ever load
       src/reader-frame.js — the one trusted bootstrap script cove ships here.
+      For offline reading the app shell fetches reader-frame.js and
+      reader-host.css through its service worker and inlines them into the
+      srcdoc (src/reader.js), because a sandboxed opaque-origin frame is not
+      controlled by the service worker and could not load them offline. The
+      only inline script/style allowed is those exact two blocks, pinned by the
+      sha256 values below and in index.html (tests/ui-contract.test.js fails if
+      they drift). If the hashes ever mismatch, reader.js falls back to this
+      file's plain <link>/<script src> form.
       Saved article bodies are sanitized (DOMPurify) by the app before they
       arrive via postMessage and are never themselves treated as script.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src data:; style-src 'self'; connect-src 'none'; form-action 'none'; script-src 'self'"
+      content="default-src 'none'; img-src data:; style-src 'self' 'sha256-dr/6e6XSPN/dWOZ0xYHS5w6s0p4D8EfBytMxUnFq/gs='; connect-src 'none'; form-action 'none'; script-src 'self' 'sha256-i+baba7X/pyKVKjWSbtdr2SqObbM4diKyGjs685t8ac='"
     />
     <link rel="stylesheet" href="./src/reader-host.css" />
   </head>
