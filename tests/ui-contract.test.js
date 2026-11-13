@@ -43,7 +43,22 @@ test('foldable and Mac layout rules exist and the build stamp matches everywhere
   assert.match(css, /@media\(max-width:400px\)/);
   assert.match(css, /@media\(hover:hover\) and \(pointer:fine\)/);
   const build = version.match(/APP_BUILD = "([^"]+)"/)?.[1];
-  assert.equal(build, '2026.11.12-foldable2');
+  assert.equal(build, '2026.11.12-foldable3');
   assert.ok(sw.includes(`cove-v1-${build}`));
   assert.match(frame, /addEventListener\('resize'/);
+});
+
+test('reader frame styles load from a file allowed by the inherited app CSP', async () => {
+  const [host, css, sw, index] = await Promise.all([
+    read('reader-host.html'), read('src/reader-host.css'), read('sw.js'), read('index.html'),
+  ]);
+  // srcdoc frames inherit index.html's style-src 'self', which blocks inline <style>.
+  assert.match(index, /style-src 'self'/);
+  assert.doesNotMatch(host, /<style[\s>]/);
+  assert.match(host, /<link rel="stylesheet" href="\.\/src\/reader-host\.css"/);
+  assert.match(host, /style-src 'self'/);
+  assert.doesNotMatch(host, /unsafe-inline/);
+  assert.match(css, /var\(--reader-size/);
+  assert.match(css, /mark\[data-color='pink'\]/);
+  assert.ok(sw.includes("'./src/reader-host.css'"));
 });

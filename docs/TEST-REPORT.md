@@ -113,3 +113,9 @@ article text first" 안내 대신 **이전에 봤던 낡은 인용문이 그대�
 - 고정 요소 점검: 하단 FAB·토스트는 `env(safe-area-inset-bottom)` 포함, 상단 고정 바 없음.
 - 확인: `npm test`·문법 검사, Playwright(Chromium) 466x678 / 678x466 / 669x951 / 951x669 / 1440x900 가로 넘침·콘솔 오류 점검.
 - 실기기에서 펼친 세로(669x951) 설정/대화상자와 큰 safe-area(상단 ~82px) 동작은 **아직 확인 필요**.
+
+## 2026-11-13 — Reader 프레임 스타일 복구 (cove-v1-2026.11.12-foldable3)
+
+- 원인(최초 릴리스부터 존재, 이번 변경과 무관): Reader 프레임은 `srcdoc`이라 앱의 CSP(`style-src 'self'`)를 물려받아 `reader-host.html`의 인라인 `<style>`이 차단되었습니다. Chromium에서 본문이 기본 Times 16px·검정/흰색으로 보였고, "Aa"의 글자 크기·줄 간격·읽기 폭 설정과 하이라이트 색(기본 노란색만)이 적용되지 않았습니다.
+- 수정: 스타일을 `src/reader-host.css`로 분리해 `<link>`로 불러오고(`'self'`로 허용), 호스트 CSP는 `style-src 'self'`로 오히려 좁혔습니다. 앱 CSP는 완화하지 않았습니다. 서비스 워커 사전 캐시에 CSS 추가. 회귀 테스트 추가.
+- 확인(Chromium): 669x951에서 CSP 오류 없음, 글꼴 serif 18px, 배경 #fdf7f8, 폭 설정(420/620)과 글자 크기(26px) 적용, 하이라이트 색 적용, 접기/펼치기(669↔466) 후 스크롤 비율 유지, 리사이즈 중 텍스트 선택 유지. Safari 실기기 확인 필요.

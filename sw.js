@@ -1,4 +1,4 @@
-const CACHE = 'cove-v1-2026.11.12-foldable2';
+const CACHE = 'cove-v1-2026.11.12-foldable3';
 const CORE = [
   './',
   './index.html',
@@ -26,6 +26,7 @@ const CORE = [
   './src/extract.js',
   './src/reader.js',
   './src/reader-frame.js',
+  './src/reader-host.css',
   './src/annotation.js',
   './src/retention.js',
   './src/sync.js',

@@ -1,0 +1,57 @@
+/* cove — reader-host.css
+   Stylesheet for the sandboxed reader frame (reader-host.html). It lives in a
+   file, not an inline <style>, because the frame is loaded via srcdoc and so
+   inherits the app shell's CSP (style-src 'self'), which blocks inline styles.
+   Loaded with <link rel="stylesheet">, it is allowed by 'self' unchanged. */
+body {
+  margin: 0;
+  padding: 4px 14px 40px;
+  font-family: ui-serif, Georgia, serif;
+  font-size: var(--reader-size, 17px);
+  line-height: var(--reader-line, 1.75);
+  color: #4a3a40;
+  /* Reading surface background — matches the app's soft "White Pink"
+     background (#FDF7F8) so long reading sessions don't sit on a stark
+     white page. This iframe has its own document and does not inherit
+     the app shell's --bg custom property, so the value is hard-coded. */
+  background: #fdf7f8;
+}
+#content {
+  max-width: var(--reader-width, 620px);
+  margin: 0 auto;
+}
+#content img,
+#content video,
+#content iframe,
+#content object,
+#content form {
+  display: none;
+}
+a {
+  color: #8a4257;
+}
+pre {
+  white-space: pre-wrap;
+}
+* {
+  overflow-wrap: anywhere;
+}
+mark {
+  border-radius: 2px;
+  padding: 0 2px;
+}
+mark[data-color='pink'] {
+  background: #f7c8d3;
+}
+mark[data-color='yellow'] {
+  background: #f7e3a8;
+}
+mark[data-color='green'] {
+  background: #cbe5b4;
+}
+mark[data-color='blue'] {
+  background: #b9d8ee;
+}
+mark[data-color='purple'] {
+  background: #cfc6e8;
+}
